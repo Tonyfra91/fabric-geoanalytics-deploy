@@ -1,0 +1,12 @@
+{
+  "OUTBREAK_NAME": "Atlanta small real-population validation",
+  "OUTBREAK_LAT": 33.7490,
+  "OUTBREAK_LON": -84.3880,
+  "SIM_DAYS": 3,
+  "STUDY_RADIUS_KM": 10,
+  "H3_RESOLUTION": 6,
+  "USE_REAL_POPULATION": true,
+  "RANDOM_SEED": 42,
+  "TABLE_PREFIX": "zombie",
+  "OVERWRITE": false
+}

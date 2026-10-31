@@ -1,7 +1,7 @@
 ---
 title: Fabric GeoAnalytics deployment experience
 description: Deploy an Azure foundation with Bicep, finish Fabric setup, and verify a spatial workload inspired by the zombie demo.
-ms.date: 2026-10-30
+ms.date: 2026-10-31
 ---
 
 ## From spatial demo to deployable experience
@@ -18,6 +18,13 @@ takes to deploy and verify that pattern, not on reproducing the blog.
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FTonyfra91%2Ffabric-geoanalytics-deploy%2Fv0.1.0%2Fdeploy%2Fazuredeploy.json)
 
 **[Start the guided deployment](./docs/getting-started.md)**
+
+For your first test, start at
+[Step 01: install and verify the tools](./docs/getting-started.md#step-01-install-and-verify-the-tools).
+Do not press the button until the walkthrough tells you to at
+[Step 13](./docs/getting-started.md#step-13-press-the-blue-button-and-enter-the-azure-parameters).
+The guide includes the links, manual approvals, fields, commands, expected
+screens, success checks, and next action for each step.
 
 > [!IMPORTANT]
 > The button deploys Azure resources only. It does not create Fabric workspace
@@ -40,6 +47,40 @@ takes to deploy and verify that pattern, not on reproducing the blog.
 | Prove the workload | Run authorization preflight and a small synthetic simulation | Six Delta tables, read-back counts, and OneLake receipt |
 | Extend | Test real population sources, inspect SQL visibility, and adapt the spatial pattern | Explicit evidence before expanding scope |
 
+### Follow the accelerator in order
+
+```mermaid
+flowchart TD
+    A["01-03: Install tools, get the repo, sign into Azure<br/>See: correct user, tenant and subscription"] --> B["04-12: Check every prerequisite<br/>Azure permissions, providers, Fabric access,<br/>workspace creation, capacity, GeoAnalytics, Esri key, network"]
+    B --> C{"All prerequisites confirmed?"}
+    C -- No --> D["STOP: use the administrator request in the guide<br/>Do not click the blue button yet"]
+    D --> B
+    C -- Yes --> E["13: Press Deploy to Azure<br/>Enter the documented parameters; review costs; Create"]
+    E --> F["14: See Azure Deployment succeeded<br/>Record the portal deployment name and vault outputs"]
+    F --> G["15-17: Initialize local configuration<br/>Enter confirmed approvals; run validate"]
+    G --> H["18: Run the Fabric finish command<br/>Creates workspace, Lakehouse, environment and notebook<br/>Does not rerun Azure or execute the notebook"]
+    H --> I["19: Sign into Fabric with the SAME user<br/>Open the created workspace and inspect all items"]
+    I --> J["20: Enter the Esri key at the hidden terminal prompt<br/>See: Secret stored"]
+    J --> K["21-22: Run the small synthetic test<br/>Observe authorization job, then simulation job"]
+    K --> L["23-24: Open Lakehouse tables and result.json<br/>Check six outputs, row counts and SQL visibility"]
+    L --> M["25: Run the small Atlanta real-population scenario<br/>Compare the spatial model with the source demo"]
+    M --> N["Acceptance checklist and cleanup<br/>Record evidence; delete only owned test resources"]
+```
+
+If Mermaid is unavailable in your viewer, read this sequence:
+tools and identity -> all approvals -> blue button -> Azure success ->
+local configuration -> validation -> Fabric finish -> Fabric inspection ->
+secret prompt -> two notebook jobs -> tables/receipt/SQL -> real-population run.
+
+### Where you work at each stage
+
+| Location | What you do there | What you must not assume |
+|---|---|---|
+| Local PowerShell 7 | Install/check tools, sign into Azure CLI, run repo commands | Windows PowerShell 5.1 is not sufficient |
+| Azure portal | Check subscription access, press the button, inspect deployment and vault | Azure success does not create Fabric items |
+| Fabric portal | Verify access before deployment; inspect workspace, jobs, Lakehouse and SQL after setup | Azure access does not imply Fabric permissions |
+| Your administrator or Esri subscription owner | Obtain settings, permission and entitlement approvals | A non-admin cannot grant these to themselves |
+
 ## What is in this repository
 
 * [Bicep source](./deploy/main.bicep) and its checked-in
@@ -59,6 +100,11 @@ redistributed in this repository. The adapter removes author bindings,
 cached results, and ArcGIS publishing from the deployed workload.
 
 ## Quick path
+
+The blocks below are a reminder for an already-prepared operator, not the
+first-test instructions. For a first test, use the
+[complete click-by-click walkthrough](./docs/getting-started.md) and complete
+the Azure-button step before running the initializer.
 
 Install PowerShell 7, Git, Azure CLI, and Bicep. Read the
 [prerequisites and portal parameter guide](./docs/getting-started.md) before
