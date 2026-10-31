@@ -1,0 +1,26 @@
+{
+  "deploymentName": "geoanalytics-poc",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroupName": "rg-geoanalytics-poc",
+  "location": "centralus",
+  "keyVaultName": "replace-with-unique-name",
+  "workspaceName": "GeoAnalytics POC",
+  "lakehouseName": "GeoAnalytics",
+  "environmentName": "GeoAnalytics Runtime 1.3",
+  "notebookName": "GeoAnalytics Demo",
+  "capacity": {
+    "mode": "existing",
+    "id": "00000000-0000-0000-0000-000000000000",
+    "name": "",
+    "sku": "F2",
+    "administrators": []
+  },
+  "confirmations": {
+    "geoAnalyticsEnabled": false,
+    "esriEntitlement": false,
+    "workspaceCreationAllowed": false,
+    "capacityAssignmentAllowed": false,
+    "azureDeploymentAllowed": false
+  }
+}

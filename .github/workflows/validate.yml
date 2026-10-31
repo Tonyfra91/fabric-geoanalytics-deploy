@@ -1,0 +1,36 @@
+name: Validate deployment experience
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-validation:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Bicep compiler
+        shell: pwsh
+        run: |
+          az bicep install --version v0.48.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify portal template freshness
+        shell: pwsh
+        run: .\deploy\scripts\Build-Template.ps1 -Check
+      - name: Retrieve pinned upstream demo locally
+        shell: pwsh
+        run: .\Get-DemoNotebook.ps1
+      - name: Test notebook and lifecycle contracts offline
+        shell: pwsh
+        run: .\deploy\tests\Test-Accelerator.ps1
+      - name: Test portal handoff offline
+        shell: pwsh
+        run: .\deploy\tests\Test-Experience.ps1

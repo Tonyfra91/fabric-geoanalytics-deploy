@@ -1,0 +1,10 @@
+{
+  "OUTBREAK_NAME": "Atlanta small synthetic validation",
+  "SIM_DAYS": 2,
+  "STUDY_RADIUS_KM": 10,
+  "H3_RESOLUTION": 6,
+  "USE_REAL_POPULATION": false,
+  "RANDOM_SEED": 42,
+  "TABLE_PREFIX": "zombie",
+  "OVERWRITE": false
+}

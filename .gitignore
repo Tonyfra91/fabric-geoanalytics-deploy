@@ -1,0 +1,5 @@
+deploy/config/customer.json
+deploy/state/
+Zombie_Outbreak_Spread.ipynb
+*.tmp
+.DS_Store

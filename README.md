@@ -1,0 +1,120 @@
+---
+title: Fabric GeoAnalytics deployment experience
+description: Deploy an Azure foundation with Bicep, finish Fabric setup, and verify a spatial workload inspired by the zombie demo.
+ms.date: 2026-10-30
+---
+
+## From spatial demo to deployable experience
+
+Start with the big blue button, then finish a dedicated Microsoft Fabric
+workspace with a Lakehouse, a GeoAnalytics-compatible environment, and a
+parameterized notebook.
+
+The [zombie outbreak demo](https://github.com/SeanKMcG/fabric_zombie_outbreak)
+showed a useful spatial pattern: H3 cells, population enrichment, neighborhood
+relationships, and time-stepped results. This repository focuses on what it
+takes to deploy and verify that pattern, not on reproducing the blog.
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FTonyfra91%2Ffabric-geoanalytics-deploy%2Fv0.1.0%2Fdeploy%2Fazuredeploy.json)
+
+**[Start the guided deployment](./docs/getting-started.md)**
+
+> [!IMPORTANT]
+> The button deploys Azure resources only. It does not create Fabric workspace
+> items, configure your Esri key, or run a notebook. Follow the guided finish
+> steps after Azure deployment succeeds.
+
+> [!WARNING]
+> Azure and Fabric resources can incur charges. Reuse an existing supported F
+> capacity by default. Creating a new capacity requires explicit opt-in.
+> Key Vault has public network access in this interactive-user POC.
+
+## The experience
+
+| Stage | What happens | How you verify it |
+|---|---|---|
+| Prepare | Confirm identity, capacity, tenant enablement, and entitlement | Read-only prerequisite checks |
+| Deploy Azure | Create a dedicated resource group, Key Vault, and user RBAC; optionally create capacity | Successful subscription deployment and outputs |
+| Finish Fabric | Create workspace, assign capacity, create Lakehouse, publish Runtime 1.3 environment, import notebook | Deployment manifest and status |
+| Configure secret | Enter the Esri GeoAnalytics API key through a hidden prompt | Secret metadata, without printing the key |
+| Prove the workload | Run authorization preflight and a small synthetic simulation | Six Delta tables, read-back counts, and OneLake receipt |
+| Extend | Test real population sources, inspect SQL visibility, and adapt the spatial pattern | Explicit evidence before expanding scope |
+
+## What is in this repository
+
+* [Bicep source](./deploy/main.bicep) and its checked-in
+  [portal ARM template](./deploy/azuredeploy.json)
+* [Portal configuration initializer](./Initialize-Experience.ps1) that reads
+  Azure outputs without provisioning anything
+* [Lifecycle entry point](./deploy.ps1) for validation, Fabric completion,
+  secret setup, execution, and status
+* [Pinned demo retrieval](./Get-DemoNotebook.ps1), with
+  [upstream attribution and boundaries](./docs/demo-provenance.md)
+* [Detailed operations reference](./deploy/README.md) and
+  [architecture and next steps](./docs/architecture.md)
+* Offline regression tests and a template freshness check
+
+The upstream notebook is downloaded locally or supplied by you. It is not
+redistributed in this repository. The adapter removes author bindings,
+cached results, and ArcGIS publishing from the deployed workload.
+
+## Quick path
+
+Install PowerShell 7, Git, Azure CLI, and Bicep. Read the
+[prerequisites and portal parameter guide](./docs/getting-started.md) before
+clicking the button.
+
+```powershell
+git clone https://github.com/Tonyfra91/fabric-geoanalytics-deploy.git
+Set-Location .\fabric-geoanalytics-deploy
+az login --tenant '<tenant-guid>'
+az account set --subscription '<subscription-guid>'
+.\Get-DemoNotebook.ps1
+.\Initialize-Experience.ps1 -AzureDeploymentName '<portal-record-name>' -ExistingCapacityId '<fabric-capacity-guid>'
+```
+
+Review the generated nonsecret configuration. Obtain administrator/customer
+approval before setting each confirmation to `true`.
+
+```powershell
+.\deploy.ps1 validate
+.\deploy.ps1 deploy -AzureDeploymentName '<portal-record-name>'
+.\deploy.ps1 configure-secret
+.\deploy.ps1 run -ParametersPath .\deploy\config\smoke-run.json
+.\deploy.ps1 status
+```
+
+The portal record name and the template's `deploymentName` are different
+identifiers. Initialization maps the template parameters for you.
+If Azure created a new capacity, omit `-ExistingCapacityId`.
+
+## Engineering status
+
+This is a preview, not a production-certified accelerator.
+Offline tests cover notebook adaptation, parameter validation, failures,
+ownership boundaries, the output contract, and the Azure-to-Fabric handoff.
+The ARM template is compiled from Bicep; CI checks that it stays synchronized.
+
+A customer deployment is not proven until live environment publication,
+runtime Key Vault access, synthetic execution, output read-back, SQL visibility,
+and repeat deployment are verified in that customer's tenant.
+See the [live acceptance checklist](./docs/getting-started.md#acceptance-checklist).
+
+## Develop and validate
+
+```powershell
+.\Get-DemoNotebook.ps1
+.\deploy\tests\Test-Accelerator.ps1
+.\deploy\tests\Test-Experience.ps1
+.\deploy\scripts\Build-Template.ps1 -Check
+```
+
+After editing Bicep, regenerate the portal template:
+
+```powershell
+.\deploy\scripts\Build-Template.ps1
+```
+
+The button pins release `v0.1.0`. Updating `main` does not silently change
+that released deployment. A future release must update the button and be
+tagged after validation.

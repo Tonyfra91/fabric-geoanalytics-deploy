@@ -1,0 +1,27 @@
+import notebookutils
+import geoanalytics_fabric
+from pyspark.sql import functions as F
+from geoanalytics_fabric.sql import functions as ST
+
+spark.conf.set("spark.native.enabled", "false")
+try:
+    _geoanalytics_key = notebookutils.credentials.getSecret(
+        DEPLOYMENT_CONFIG["keyVaultUri"], DEPLOYMENT_CONFIG["secretName"]
+    )
+except Exception:
+    raise RuntimeError(
+        "Cannot retrieve geoanalytics-api-key. Verify the executing user's Key Vault "
+        "Get permission, network access, and secret existence."
+    ) from None
+if not _geoanalytics_key:
+    raise RuntimeError("The GeoAnalytics API key is empty. Run configure-secret.")
+try:
+    geoanalytics_fabric.auth(api_key=_geoanalytics_key)
+except Exception:
+    raise RuntimeError("GeoAnalytics authorization failed. Verify the Esri entitlement and key.") from None
+finally:
+    del _geoanalytics_key
+
+spark.range(1).select(ST.as_text(ST.point(F.lit(0.0), F.lit(0.0), sr=4326))).first()
+if CHECK_ONLY:
+    notebookutils.notebook.exit(json.dumps({"preflight": "passed"}))

@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Nonsecret Fabric zombie outbreak deployment manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "deploymentName", "deploymentVersion", "subscriptionId", "tenantId",
+    "resourceGroupName", "location", "userObjectId", "createdAt",
+    "updatedAt", "stage", "resources", "capacityId", "capacityMode",
+    "keyVaultName", "keyVaultUri", "keyVaultSecretName"
+  ],
+  "properties": {
+    "deploymentName": { "type": "string" },
+    "deploymentVersion": { "const": "0.1.0" },
+    "subscriptionId": { "type": "string", "format": "uuid" },
+    "tenantId": { "type": "string", "format": "uuid" },
+    "userObjectId": { "type": "string", "format": "uuid" },
+    "resourceGroupName": { "type": "string" },
+    "location": { "type": "string" },
+    "capacityId": { "type": "string", "format": "uuid" },
+    "capacityMode": { "enum": ["existing", "new"] },
+    "workspaceId": { "type": "string", "format": "uuid" },
+    "lakehouseId": { "type": "string", "format": "uuid" },
+    "environmentId": { "type": "string", "format": "uuid" },
+    "notebookId": { "type": "string", "format": "uuid" },
+    "keyVaultName": { "type": "string" },
+    "keyVaultUri": { "type": "string", "pattern": "^https://[a-zA-Z0-9-]+\\.vault\\.azure\\.net/$" },
+    "keyVaultSecretName": { "const": "geoanalytics-api-key" },
+    "stage": { "enum": ["AzureDeployed", "Validating", "Configured"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "repositoryCommit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "lastJobUri": { "type": "string", "pattern": "^https://api\\.fabric\\.microsoft\\.com/v1/" },
+    "lastResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "outputs"],
+      "properties": {
+        "run_id": { "type": "string" },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["table", "rows"],
+            "properties": {
+              "table": { "type": "string" },
+              "rows": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "created"],
+        "properties": {
+          "id": { "type": "string" },
+          "created": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

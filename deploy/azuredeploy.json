@@ -1,0 +1,362 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.48.1.52935",
+      "templateHash": "4538238372939519292"
+    },
+    "name": "Fabric GeoAnalytics deployment experience",
+    "description": "Azure foundation for a guided Fabric GeoAnalytics workload. Finish Fabric setup separately."
+  },
+  "parameters": {
+    "deploymentName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 41,
+      "metadata": {
+        "description": "Deployment name used for resource ownership tags."
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for the resource group, vault, and optional new capacity."
+      }
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group for deployment-created Azure resources."
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24,
+      "metadata": {
+        "description": "Globally unique Key Vault name."
+      }
+    },
+    "userObjectId": {
+      "type": "string",
+      "metadata": {
+        "description": "Object ID of the interactive deployment and notebook user."
+      }
+    },
+    "shouldCreateCapacity": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Whether to create a new capacity. False preserves the existing customer capacity."
+      }
+    },
+    "capacityName": {
+      "type": "string",
+      "nullable": true,
+      "metadata": {
+        "description": "New capacity name. Required only when creating a capacity."
+      }
+    },
+    "capacitySku": {
+      "type": "string",
+      "defaultValue": "F2",
+      "metadata": {
+        "description": "SKU for an explicitly requested new capacity."
+      }
+    },
+    "capacityAdministrators": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Capacity administrator user principal names for an explicitly requested new capacity."
+      }
+    }
+  },
+  "variables": {
+    "tags": {
+      "accelerator": "fabric-zombie-outbreak",
+      "deployment": "[parameters('deploymentName')]"
+    }
+  },
+  "resources": {
+    "resourceGroup": {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2025-04-01",
+      "name": "[parameters('resourceGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]"
+    },
+    "vault": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('vault-{0}', uniqueString('vault', deployment().name))]",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "name": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "userObjectId": {
+            "value": "[parameters('userObjectId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "14952751245629648002"
+            },
+            "name": "GeoAnalytics Key Vault",
+            "description": "RBAC-enabled vault and access for the interactive customer user."
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource ownership tags."
+              }
+            },
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name."
+              }
+            },
+            "userObjectId": {
+              "type": "string",
+              "metadata": {
+                "description": "Interactive customer user object ID."
+              }
+            }
+          },
+          "variables": {
+            "secretsOfficerRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2025-05-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "tenantId": "[tenant().tenantId]",
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "enableRbacAuthorization": true,
+                "enableSoftDelete": true,
+                "enablePurgeProtection": true,
+                "softDeleteRetentionInDays": 90,
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "defaultAction": "Allow"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('name')), parameters('userObjectId'), variables('secretsOfficerRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('secretsOfficerRoleId')]",
+                "principalId": "[parameters('userObjectId')]",
+                "principalType": "User"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "uri": {
+              "type": "string",
+              "metadata": {
+                "description": "Vault URI. No secret values are returned."
+              },
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('name')), '2025-05-01').vaultUri]"
+            },
+            "id": {
+              "type": "string",
+              "metadata": {
+                "description": "Vault ARM ID."
+              },
+              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "resourceGroup"
+      ]
+    },
+    "capacity": {
+      "condition": "[parameters('shouldCreateCapacity')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('capacity-{0}', uniqueString('capacity', deployment().name))]",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "name": {
+            "value": "[parameters('capacityName')]"
+          },
+          "sku": {
+            "value": "[parameters('capacitySku')]"
+          },
+          "administrators": {
+            "value": "[parameters('capacityAdministrators')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "4277072466795280786"
+            },
+            "name": "Optional New Fabric Capacity",
+            "description": "Creates a capacity only when the customer explicitly selects new capacity mode."
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Capacity Azure region."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource ownership tags."
+              }
+            },
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Capacity name."
+              }
+            },
+            "sku": {
+              "type": "string",
+              "metadata": {
+                "description": "Capacity SKU."
+              }
+            },
+            "administrators": {
+              "type": "array",
+              "metadata": {
+                "description": "Capacity administrator user principal names."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Fabric/capacities",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[parameters('sku')]",
+                "tier": "Fabric"
+              },
+              "properties": {
+                "administration": {
+                  "members": "[parameters('administrators')]"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "metadata": {
+                "description": "Capacity ARM resource ID, not its Fabric capacity GUID."
+              },
+              "value": "[resourceId('Microsoft.Fabric/capacities', parameters('name'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "resourceGroup"
+      ]
+    }
+  },
+  "outputs": {
+    "keyVaultUri": {
+      "type": "string",
+      "metadata": {
+        "description": "Nonsecret Key Vault endpoint."
+      },
+      "value": "[reference('vault').outputs.uri.value]"
+    },
+    "keyVaultId": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault ARM ID."
+      },
+      "value": "[reference('vault').outputs.id.value]"
+    },
+    "capacityResourceId": {
+      "type": "string",
+      "nullable": true,
+      "metadata": {
+        "description": "Optional new capacity ARM ID. The Fabric capacity ID is resolved separately."
+      },
+      "value": "[if(parameters('shouldCreateCapacity'), reference('capacity').outputs.id.value, null())]"
+    },
+    "experienceVersion": {
+      "type": "string",
+      "metadata": {
+        "description": "Handoff contract version for the guided Fabric setup."
+      },
+      "value": "1.0"
+    },
+    "nextStep": {
+      "type": "string",
+      "metadata": {
+        "description": "Next step after Azure deployment succeeds."
+      },
+      "value": "Clone Tonyfra91/fabric-geoanalytics-deploy and follow docs/getting-started.md. No Fabric notebook has been deployed or executed."
+    }
+  }
+}

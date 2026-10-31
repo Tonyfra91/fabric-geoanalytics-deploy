@@ -1,0 +1,36 @@
+outputs = {
+    "cells_daily": (cells_daily, ("cell_geom", "center")),
+    "arrival": (arrival, ("cell_geom", "center")),
+    "front_daily": (front, ("front_geom", "hull_geom", "mean_center")),
+    "grid_population_vulnerability": (
+        cell_attrs.withColumn("run_id", F.lit(RUN_ID)), ("cell_geom", "center")
+    ),
+    "origin": (origin_df.withColumn("run_id", F.lit(RUN_ID)), ("geometry",)),
+    "vulnerability_summary": (by_quintile.withColumn("run_id", F.lit(RUN_ID)), ()),
+}
+tables = {
+    name: f"{TABLE_PREFIX}_{RUN_ID}_{name}".lower()
+    for name in outputs
+}
+if not OVERWRITE:
+    conflicts = [name for name in tables.values() if spark.catalog.tableExists(name)]
+    if conflicts:
+        raise RuntimeError(f"Output tables already exist: {conflicts}. Use a new RUN_ID.")
+
+results = {}
+for name, (frame, geometries) in outputs.items():
+    for geometry in geometries:
+        frame = frame.withColumn(f"{geometry}_wkt", ST.as_text(geometry)).drop(geometry)
+    if geometries:
+        frame = frame.withColumn("geometry_srid", F.lit(4326))
+    mode = "overwrite" if OVERWRITE else "errorifexists"
+    frame.write.format("delta").mode(mode).saveAsTable(tables[name])
+    persisted = spark.table(tables[name])
+    row_count = persisted.count()
+    if name in ("origin", "grid_population_vulnerability", "cells_daily") and row_count == 0:
+        raise RuntimeError(f"Required output {tables[name]} is empty.")
+    results[name] = {"table": tables[name], "rows": row_count}
+
+exit_value = {"run_id": RUN_ID, "outputs": results}
+notebookutils.fs.put(f"{OUT}/result.json", json.dumps(exit_value), OVERWRITE)
+notebookutils.notebook.exit(json.dumps(exit_value))
