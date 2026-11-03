@@ -1,7 +1,7 @@
 ---
 title: Copilot Fast Pass
 description: Preferred beginner-friendly GitHub Copilot route to the Azure-button and Fabric GeoAnalytics deployment experience.
-ms.date: 2026-10-31
+ms.date: 2026-11-02
 ---
 
 ## Use Copilot as your deployment guide
@@ -40,21 +40,21 @@ Never select blanket approval, bypass, or unattended permissions for this test.
 
 ### Fast Pass sequence
 
-```mermaid
-flowchart TD
-    A["FP01-06: Tools, repo, Copilot sign-in<br/>Choose local Copilot + Agent + Manual permissions"] --> B["FP07-08: Invoke the skill<br/>Read-only checks, user sign-in and confirmed prerequisites"]
-    B --> C["FP09: Review Copilot's parameter table<br/>YOU press the unchanged Azure button and Create"]
-    C --> D["FP10: Azure succeeds<br/>Copilot initializes configuration; YOU review approvals"]
-    D --> E["FP11: YOU approve Fabric finish<br/>Copilot deploys/checks workspace items"]
-    E --> F["FP12: YOU enter the Esri key<br/>Hidden terminal prompt, never chat"]
-    F --> G["FP13: YOU approve synthetic run<br/>Copilot verifies preflight, simulation and outputs"]
-    G --> H["FP14: YOU inspect Fabric tables and SQL<br/>FP15: separately approve real-population run"]
-    H --> I["FP16: Evidence summary<br/>Stop, resume or use manual cleanup with owner approval"]
-```
+[![Six stages: prepare, deploy Azure, finish Fabric, store key, run model, verify results](./images/accelerator-journey.svg)](./images/accelerator-journey.svg)
 
-If diagrams are unavailable, follow FP01 through FP16 below in order.
+Read 1-3 across the top, then 4-6 across the bottom; click for full size.
+Follow FP01-FP16 below, not a second manual deployment. Each step starts with
+a checkpoint card: **Where**, **Do**, **See**, and a clickable **Next**.
+Do not continue when its success condition has not been met.
 
 ## FP01 Check what you need before opening Copilot
+
+| Checkpoint | Instruction                                                                          |
+| ---------- | ------------------------------------------------------------------------------------ |
+| Where      | Your computer, with your private access/approval notes                               |
+| Do         | Confirm the prerequisites listed below; ask the owner about unknown items            |
+| See        | Confirmed access and entitlement, not merely a successful login                      |
+| Next       | [FP02](#fp02-install-vs-code-and-the-local-tools) only after prerequisites are known |
 
 Have these ready:
 
@@ -83,9 +83,14 @@ Use an organization-approved Copilot account and data-handling policy;
 even nonsecret tenant/resource configuration can be organization-sensitive.
 
 See/expect: confirmed access, not a new cloud deployment.
-Next: FP02.
-
 ## FP02 Install VS Code and the local tools
+
+| Checkpoint | Instruction                                                              |
+| ---------- | ------------------------------------------------------------------------ |
+| Where      | Your Windows computer and approved installer pages                       |
+| Do         | Install/open VS Code and verify the five local tools                     |
+| See        | VS Code opens; version checks succeed, including PowerShell 7            |
+| Next       | [FP03](#fp03-clone-and-open-the-correct-repository) after the tools work |
 
 1. Open [Download Visual Studio Code](https://code.visualstudio.com/Download).
 2. Select the appropriate **Windows** installer for your computer and follow
@@ -101,9 +106,14 @@ Next: FP02.
 See/expect: VS Code opens and the tools are available. No local Spark or
 GeoAnalytics installation is required. Stop if installation is blocked by policy;
 ask IT instead of bypassing it.
-Next: FP03.
-
 ## FP03 Clone and open the correct repository
+
+| Checkpoint | Instruction                                                           |
+| ---------- | --------------------------------------------------------------------- |
+| Where      | VS Code Command Palette, then the cloned repository's Explorer        |
+| Do         | Clone the URL below and open its root folder                          |
+| See        | `deploy.ps1`, `docs` and `.github` in the same open root              |
+| Next       | [FP04](#fp04-sign-into-github-copilot) after the correct repo is open |
 
 In VS Code:
 
@@ -133,9 +143,14 @@ If a clone already exists, open it, inspect its Git status, and update a clean
 checkout deliberately. Do not reset/discard another person's changes.
 If **Git: Clone** is missing, fix Git installation and restart VS Code.
 
-Next: FP04.
-
 ## FP04 Sign into GitHub Copilot
+
+| Checkpoint | Instruction                                                                |
+| ---------- | -------------------------------------------------------------------------- |
+| Where      | VS Code Accounts/Copilot controls and the sign-in browser                  |
+| Do         | Sign in with your approved GitHub Copilot account, then return to VS Code  |
+| See        | Copilot Chat is available under the intended GitHub account                |
+| Next       | [FP05](#fp05-open-a-powershell-7-terminal) after Copilot sign-in completes |
 
 1. In VS Code, find the Copilot icon/status control and select **Use AI Features**
    or **Sign in to use Copilot**, depending on your version.
@@ -156,9 +171,14 @@ If Copilot reports an organization policy restriction or exhausted allowance,
 resolve it with your account owner or use the manual route.
 Reference: [Official Copilot setup](https://code.visualstudio.com/docs/setup/copilot).
 
-Next: FP05.
-
 ## FP05 Open a PowerShell 7 terminal
+
+| Checkpoint | Instruction                                                                                             |
+| ---------- | ------------------------------------------------------------------------------------------------------- |
+| Where      | VS Code's integrated terminal, at the repository root                                                   |
+| Do         | Select PowerShell 7 and run the location/version/file checks below                                      |
+| See        | Major version at least 7, the repo path, and `True` for `deploy.ps1`                                    |
+| Next       | [FP06](#fp06-choose-a-local-copilot-agent-session-with-manual-permissions) after all three checks match |
 
 1. In VS Code, select **Terminal > New Terminal**.
 2. In the terminal profile dropdown, choose PowerShell 7 where available.
@@ -177,9 +197,14 @@ PowerShell 7 profile, then check again.
 
 Keep this terminal for sign-in and the later secret prompt.
 **Do not run `configure-secret` yet.**
-Next: FP06.
-
 ## FP06 Choose a local Copilot Agent session with manual permissions
+
+| Checkpoint | Instruction                                                                           |
+| ---------- | ------------------------------------------------------------------------------------- |
+| Where      | A fresh VS Code Chat session for this repository                                      |
+| Do         | Choose local Copilot, Agent mode and Manual permissions                               |
+| See        | The session is attached to this repo and tool approvals remain enabled                |
+| Next       | [FP07](#fp07-start-fast-pass-without-authorizing-deployment) without blanket approval |
 
 1. Press **Ctrl+Alt+I** to open Chat.
 2. Select **+** to start a fresh chat for this repository.
@@ -200,9 +225,14 @@ Reference: [Official agent-session quickstart](https://code.visualstudio.com/doc
 
 See/expect: a local Agent session attached to this repo. It can request terminal
 commands/file edits. That capability is not authorization to provision or run compute.
-Next: FP07.
-
 ## FP07 Start Fast Pass without authorizing deployment
+
+| Checkpoint | Instruction                                                                                                 |
+| ---------- | ----------------------------------------------------------------------------------------------------------- |
+| Where      | VS Code Chat input, not the PowerShell terminal                                                             |
+| Do         | Select the skill and send the exact read-only starting message below                                        |
+| See        | Copilot identifies the skill and proposes preparation, not deployment                                       |
+| Next       | [FP08](#fp08-let-copilot-check-preparation-and-confirm-your-prerequisites) after skill loading is confirmed |
 
 1. In Chat, type `/` and select **fabric-geoanalytics-fast-pass** from the menu.
 2. Add the following starting message and send it:
@@ -241,9 +271,14 @@ read-only checks/local preparation, not cloud creation or compute.
 Reference: [Agent Skills](https://code.visualstudio.com/docs/agent-customization/agent-skills).
 If discovery/attachment remains unavailable, stop and use the manual guide.
 
-Next: FP08.
-
 ## FP08 Let Copilot check preparation and confirm your prerequisites
+
+| Checkpoint | Instruction                                                                                        |
+| ---------- | -------------------------------------------------------------------------------------------------- |
+| Where      | VS Code Chat/tool approvals; use the terminal only for your sign-in                                |
+| Do         | Review checks and supply requested nonsecret values/real confirmations                             |
+| See        | Preparation is verified or clearly blocked; no cloud writes occurred                               |
+| Next       | [FP09](#fp09-review-parameters-and-press-the-unchanged-blue-button) only when preparation is ready |
 
 Copilot should check versions, Git status, the pinned demo download, offline
 tests and Bicep freshness. Review each requested command before approving it.
@@ -277,9 +312,14 @@ plus documentation/template checks. They do not establish live tenant acceptance
 If an approval is missing, resolve it using
 [manual prerequisite instructions](./getting-started.md#step-04-confirm-azure-deployment-and-role-assignment-permissions).
 
-Next: FP09 only when Copilot reports preparation ready.
-
 ## FP09 Review parameters and press the unchanged blue button
+
+| Checkpoint | Instruction                                                                                                    |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
+| Where      | Chat for parameter review, then Azure portal Custom deployment                                                 |
+| Do         | You enter the reviewed values, select Create, and inspect deployment Outputs                                   |
+| See        | Azure `Deployment succeeded`, version `1.0`, and the recorded deployment name                                  |
+| Next       | [FP10](#fp10-review-the-initialized-configuration-and-validation) after telling Copilot the actual record name |
 
 Copilot should produce a field-by-field table using your approved values:
 subscription, ownership `deploymentName`, region, new group, unique vault,
@@ -309,9 +349,14 @@ name unless it really is also the record name. Do not send keys/tokens.
 If Azure failed, report the redacted error and stop. Do not claim success
 because a vault appears in the portal.
 
-Next: FP10.
-
 ## FP10 Review the initialized configuration and validation
+
+| Checkpoint | Instruction                                                                                     |
+| ---------- | ----------------------------------------------------------------------------------------------- |
+| Where      | VS Code Chat, configuration editor and command output                                           |
+| Do         | Approve initialization; review configuration/confirmation edits and validation                  |
+| See        | Correct `customer.json`, Pass/Confirmed rows, and validate exit code `0`                        |
+| Next       | [FP11](#fp11-approve-fabric-finish-and-inspect-the-deployed-items) only after validation passes |
 
 Copilot verifies Azure state and identity, then proposes
 `Initialize-Experience.ps1` using the record name and existing capacity GUID
@@ -334,9 +379,14 @@ Expect automated `Pass`, approvals `Confirmed`, and exit `0`.
 Exit `2` means missing manual confirmations; exit `1` is a failure.
 Do not approve Fabric finish until the required checks/approvals are resolved.
 
-Next: FP11.
-
 ## FP11 Approve Fabric finish and inspect the deployed items
+
+| Checkpoint | Instruction                                                                                                 |
+| ---------- | ----------------------------------------------------------------------------------------------------------- |
+| Where      | VS Code Chat approval, then the created workspace in Fabric portal                                          |
+| Do         | Approve the handoff command; inspect the expected Fabric items and status                                   |
+| See        | `Configured`, runtime `1.3`, verified bindings, and the named items                                         |
+| Next       | [FP12](#fp12-enter-the-esri-key-yourself-outside-copilot-tools) after setup succeeds; do not select Run all |
 
 Copilot should show the exact target and proposed command:
 
@@ -371,9 +421,14 @@ Do not select **Run all**, manually import the original, or insert a key.
 Tell Copilot whether those items are visible. It cannot claim a browser check
 it did not perform or receive confirmation for.
 
-Next: FP12.
-
 ## FP12 Enter the Esri key yourself outside Copilot tools
+
+| Checkpoint | Instruction                                                                             |
+| ---------- | --------------------------------------------------------------------------------------- |
+| Where      | Your visible PowerShell 7 terminal, never Chat                                          |
+| Do         | You run `configure-secret` and enter the key at its hidden prompt                       |
+| See        | `Secret stored; metadata access verified...` without the key being exposed              |
+| Next       | [FP13](#fp13-separately-approve-the-synthetic-run) after reporting success, not the key |
 
 Copilot must pause here and give you this command to run in your visible
 PowerShell 7 terminal:
@@ -414,9 +469,14 @@ contents, or token output to diagnose this.
 If a key was exposed in chat, stop and arrange revocation/rotation with its owner;
 do not assume removing text makes the exposure safe.
 
-Next: FP13.
-
 ## FP13 Separately approve the synthetic run
+
+| Checkpoint | Instruction                                                                                        |
+| ---------- | -------------------------------------------------------------------------------------------------- |
+| Where      | VS Code Chat/tool approval and the existing command's output                                       |
+| Do         | Approve one bounded synthetic run and let Copilot watch that submission                            |
+| See        | Preflight and simulation succeed; exit `0` includes six verified outputs                           |
+| Next       | [FP14](#fp14-read-the-actual-results-in-fabric-and-sql) after verification, not merely a green job |
 
 Copilot should show `smoke-run.json` settings: two days, 10 km, H3 resolution 6,
 synthetic population, seed 42, overwrite disabled. It explains that the command
@@ -446,9 +506,14 @@ Copilot must inspect the existing job and stop, not automatically resubmit.
 An empty synthetic vulnerability summary is allowed; required origin/grid/
 daily-state outputs must be nonempty.
 
-Next: FP14 after verified success.
-
 ## FP14 Read the actual results in Fabric and SQL
+
+| Checkpoint | Instruction                                                                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Where      | Your Fabric Lakehouse, receipt preview and SQL analytics endpoint                                                                                 |
+| Do         | Open actual table names and compare SQL counts with the Spark receipt                                                                             |
+| See        | Six readable outputs, matching counts and manually confirmed SQL visibility                                                                       |
+| Next       | Optional [FP15](#fp15-separately-approve-the-small-atlanta-real-population-run), or [FP16](#fp16-finish-with-evidence-or-resume-safely) to finish |
 
 Copilot runs status and reads the existing nonsecret manifest. It should supply:
 
@@ -467,9 +532,14 @@ whether the previews/counts are visible and match. It must distinguish script-
 verified results from your manually verified UI/SQL evidence.
 You need no separate SQL database/client or ArcGIS publishing credentials.
 
-Next: FP15 if you want to test the real-source model; otherwise FP16.
-
 ## FP15 Separately approve the small Atlanta real-population run
+
+| Checkpoint | Instruction                                                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Where      | VS Code Chat approval, then Fabric verification for the new run                                                                            |
+| Do         | Approve one bounded real-source run, or explicitly decline it                                                                              |
+| See        | A new verified run ID/output set, or a clear `NOT RUN` status                                                                              |
+| Next       | Repeat [FP14](#fp14-read-the-actual-results-in-fabric-and-sql) for the new names, then [FP16](#fp16-finish-with-evidence-or-resume-safely) |
 
 This is the bounded scenario closest to the source demo's real census/SVI
 enrichment. It uses Atlanta coordinates, three days, 10 km, H3 resolution 6,
@@ -497,9 +567,15 @@ Reference: [manual Step 25](./getting-started.md#step-25-run-the-small-atlanta-r
 
 You can decline this stage. Copilot then reports real-population validation
 as `NOT RUN`, not completed.
-Next: FP16.
 
 ## FP16 Finish with evidence or resume safely
+
+| Checkpoint | Instruction                                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------------------------------------ |
+| Where      | VS Code Chat's evidence summary and your private test records                                                      |
+| Do         | Review verified, blocked and not-run stages; do not authorize another job                                          |
+| See        | Evidence-backed results with unresolved checks stated explicitly                                                   |
+| Next       | Use the [acceptance checklist](./getting-started.md#acceptance-checklist); stop or resume only from verified state |
 
 Ask:
 

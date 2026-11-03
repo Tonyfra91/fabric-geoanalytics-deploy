@@ -7,6 +7,7 @@
     Tests the Azure portal to Fabric handoff offline.
 .DESCRIPTION
     Uses dependency-free Azure mocks and rejects mismatches before Fabric mutations.
+    Checks guide navigation, reader checkpoints, and the compact diagram/source.
 .PARAMETER RepositoryRoot
     Root of the deployment experience.
 .EXAMPLE
@@ -142,9 +143,13 @@ if ($MyInvocation.InvocationName -ne '.') {
         }
         foreach ($File in Get-ChildItem -LiteralPath $RepositoryRoot -Recurse -Filter '*.md' -File) {
             $Content = Get-Content -LiteralPath $File.FullName -Raw
-            foreach ($Match in [regex]::Matches($Content, '\]\((\.\.?/[^)]+)\)')) {
+            foreach ($Match in [regex]::Matches($Content, '\]\((\.\.?/[^)]+|#[^)]+)\)')) {
                 $Parts = $Match.Groups[1].Value -split '#',2
-                $Target = [IO.Path]::GetFullPath((Join-Path $File.DirectoryName ($Parts[0] -replace '/', [IO.Path]::DirectorySeparatorChar)))
+                $Target = if ($Parts[0]) {
+                    [IO.Path]::GetFullPath((Join-Path $File.DirectoryName ($Parts[0] -replace '/', [IO.Path]::DirectorySeparatorChar)))
+                } else {
+                    $File.FullName
+                }
                 if (-not (Test-Path -LiteralPath $Target)) { throw "Broken documentation link in $($File.Name): $($Match.Groups[1].Value)" }
                 if ($Parts.Count -eq 2) {
                     $TargetContent = Get-Content -LiteralPath $Target -Raw
@@ -181,12 +186,75 @@ if ($MyInvocation.InvocationName -ne '.') {
             throw 'Fast Pass skill must remain discoverable and directly user-invocable.'
         }
         $FastPass = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'docs\copilot-fast-pass.md') -Raw
-        $Steps = @([regex]::Matches($FastPass, '(?m)^## FP(?<number>\d\d) '))
+        $Steps = @([regex]::Matches($FastPass, '(?ms)^## FP(?<number>\d\d) [^\r\n]+\r?\n(?<body>.*?)(?=^## |\z)'))
         if ($Steps.Count -ne 16 -or
             (@($Steps | ForEach-Object { [int]$_.Groups['number'].Value }) -join ',') -ne ((1..16) -join ',')) {
             throw 'Fast Pass guide must contain FP01-FP16 in order.'
         }
+        foreach ($Step in $Steps) {
+            foreach ($Field in @('Where','Do','See','Next')) {
+                if ($Step.Groups['body'].Value -notmatch "(?m)^\| +$Field +\| +\S[^\r\n]+\| *\r?$") {
+                    throw "FP$($Step.Groups['number'].Value) is missing its $Field checkpoint."
+                }
+            }
+            if ($Step.Groups['body'].Value -notmatch '(?m)^\| Next +\| .*?\[[^\]]+\]\([^)]+\)') {
+                throw "FP$($Step.Groups['number'].Value) needs a linked next action."
+            }
+        }
+        $Manual = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'docs\getting-started.md') -Raw
+        $ManualSteps = @([regex]::Matches($Manual, '(?ms)^### Step (?<number>\d\d) [^\r\n]+\r?\n(?<body>.*?)(?=^### Step |^## |\z)'))
+        if ($ManualSteps.Count -ne 25 -or
+            (@($ManualSteps | ForEach-Object { [int]$_.Groups['number'].Value }) -join ',') -ne ((1..25) -join ',')) {
+            throw 'Manual guide must contain Steps 01-25 in order.'
+        }
+        foreach ($Step in $ManualSteps) {
+            $Body = $Step.Groups['body'].Value
+            if ($Body -notmatch '(?m)^Where to be: \S[^\r\n]+' -or
+                $Body -notmatch '(?im)\bexpect(?:ed)?\b' -or
+                $Body -notmatch '(?m)^Next: .*?\[[^\]]+\]\(#[^)]+\)') {
+                throw "Manual Step $($Step.Groups['number'].Value) needs location, expected result and linked next action."
+            }
+        }
+        $DiagramPath = Join-Path $RepositoryRoot 'docs\images\accelerator-journey.drawio'
+        $SvgPath = Join-Path $RepositoryRoot 'docs\images\accelerator-journey.svg'
+        $Diagram = [xml](Get-Content -LiteralPath $DiagramPath -Raw)
+        $Svg = [xml](Get-Content -LiteralPath $SvgPath -Raw)
+        $Cells = @($Diagram.mxfile.diagram.mxGraphModel.root.mxCell)
+        $Stages = @($Cells | Where-Object { $_.id -match '^stage-[1-6]$' -and $_.vertex -eq '1' })
+        $Edges = @($Cells | Where-Object { $_.edge -eq '1' })
+        if ($Stages.Count -ne 6 -or $Edges.Count -ne 5) { throw 'Overview must remain six stages with five connectors.' }
+        $SvgText = (@($Svg.SelectNodes("//*[local-name()='text']") | ForEach-Object { $_.InnerText }) -join ' ') -replace '\s+',' '
+        foreach ($Stage in $Stages) {
+            foreach ($Line in ($Stage.value -split '\r?\n')) {
+                if (-not $SvgText.Contains(($Line -replace '\s+',' '))) {
+                    throw "SVG label differs from draw.io stage $($Stage.id): $Line"
+                }
+            }
+        }
+        foreach ($Index in 1..5) {
+            if (@($Edges | Where-Object { $_.source -eq "stage-$Index" -and $_.target -eq "stage-$($Index + 1)" }).Count -ne 1) {
+                throw "Draw.io overview must connect stage $Index to stage $($Index + 1)."
+            }
+        }
+        $ViewBox = @($Svg.DocumentElement.GetAttribute('viewBox') -split '\s+' | ForEach-Object {
+            [double]::Parse($_, [Globalization.CultureInfo]::InvariantCulture)
+        })
+        if ($ViewBox.Count -ne 4 -or $ViewBox[2] -le 0 -or $ViewBox[3] -le 0 -or
+            $ViewBox[3] -gt 420 -or $ViewBox[2] / $ViewBox[3] -lt 2.5) {
+            throw 'SVG overview must stay compact: positive viewBox, height <= 420 and width/height >= 2.5.'
+        }
+        if ($Svg.SelectNodes("//*[local-name()='script' or local-name()='foreignObject']").Count -gt 0) {
+            throw 'Overview SVG must use portable, script-free SVG text, not HTML labels.'
+        }
+        foreach ($Path in @('README.md','docs\copilot-fast-pass.md')) {
+            $Content = Get-Content -LiteralPath (Join-Path $RepositoryRoot $Path) -Raw
+            if ($Content -notmatch '!\[[^\]]+\]\([^)]*accelerator-journey\.svg\)' -or $Content -match '```mermaid') {
+                throw "$Path must display the shared SVG overview rather than a tall Mermaid flowchart."
+            }
+        }
         Write-Host 'PASS: Fast Pass skill discovery metadata, user invocation and 16 ordered guide steps.'
+        Write-Host 'PASS: 16 Fast Pass checkpoint cards and 25 ordered, located manual steps with linked next actions.'
+        Write-Host 'PASS: Compact six-stage SVG, matching draw.io labels, ordered connectors and shared guide images.'
         Write-Host 'PASS: Portal scope, handoff version, opt-in capacity, secret boundaries, documentation links, and release button URLs.'
         exit 0
     }

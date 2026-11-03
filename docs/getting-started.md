@@ -1,7 +1,7 @@
 ---
 title: Deploy Azure and finish Fabric setup
 description: A numbered first-test walkthrough with every prerequisite, manual approval, screen, command, expected result, and next action.
-ms.date: 2026-10-31
+ms.date: 2026-11-02
 ---
 
 ## Before you begin
@@ -17,6 +17,11 @@ active Fabric F capacity. An optional new-capacity path is included at Step 13.
 You do not need to be an Azure administrator to follow the steps, but you
 must receive the required permissions and approvals from the appropriate
 administrator. This repo cannot grant you access you do not have.
+
+Each step names where to be before you act, describes what to expect, and
+ends with a linked next step. Stay on that step if the expected result is
+missing. If Copilot brought you here for click-by-click detail, return to
+your current Fast Pass step afterward; do not restart this manual deployment.
 
 Keep these three places open:
 
@@ -78,6 +83,8 @@ Do not interchange them.
 
 ### Step 01 Install and verify the tools
 
+Where to be: Windows Terminal on your computer, then a PowerShell 7 window.
+
 Do this on your Windows computer, not in Fabric or Azure Cloud Shell.
 
 1. Open **Start**, type **Terminal**, and open Windows Terminal.
@@ -119,9 +126,12 @@ and Bicep reports `0.48.1`. A command-not-found error is a blocker; reopen
 Terminal or ask IT to fix the installation. You do not need local PySpark,
 GeoAnalytics, or ArcGIS Python packages.
 
-Next: Step 02. Keep this PowerShell 7 window open for the remaining commands.
+Next: [Step 02](#step-02-get-the-repository-and-pinned-demo).
+Keep this PowerShell 7 window open for the remaining commands.
 
 ### Step 02 Get the repository and pinned demo
+
+Where to be: the local PowerShell 7 window; commands below enter the repo folder.
 
 In PowerShell 7, choose a local folder where you have write access.
 The following commands create a folder under your user profile:
@@ -169,9 +179,12 @@ mark. Do not disable organization-enforced execution policy.
 If the source download is blocked, ask for an authorized copy and use the
 [local-source option](./demo-provenance.md#local-retrieval-and-integrity).
 
-Next: Step 03. Run all subsequent repo commands from this folder.
+Next: [Step 03](#step-03-choose-the-user-tenant-and-azure-subscription).
+Run all subsequent repo commands from this folder.
 
 ### Step 03 Choose the user, tenant and Azure subscription
+
+Where to be: Azure portal for account details and local PowerShell for CLI sign-in.
 
 1. Open [Azure portal](https://portal.azure.com).
 2. Sign in with the work/school account you will use for the entire test.
@@ -208,9 +221,11 @@ Record that object GUID for the portal template.
 If Microsoft Entra directory reads or sign-in are denied, ask your identity
 administrator to resolve them. Do not substitute an app/client ID.
 
-Next: Step 04.
+Next: [Step 04](#step-04-confirm-azure-deployment-and-role-assignment-permissions).
 
 ### Step 04 Confirm Azure deployment and role-assignment permissions
+
+Where to be: Azure portal, in the approved subscription's Access control (IAM).
 
 1. In Azure portal, open **Subscriptions** and select the approved subscription.
 2. Open **Access control (IAM)**.
@@ -237,9 +252,11 @@ Azure subscription of your own authorizes this deployment.
 If a role is missing, stop and send the administrator request at the end of
 the prerequisite section. The blue button will not repair missing permissions.
 
-Next: Step 05.
+Next: [Step 05](#step-05-confirm-providers-and-choose-fresh-azure-names).
 
 ### Step 05 Confirm providers and choose fresh Azure names
+
+Where to be: local PowerShell 7, signed into the approved Azure subscription.
 
 In PowerShell:
 
@@ -274,9 +291,11 @@ Do not retag an existing resource or put the deployment in a shared group.
 The portal button does not run the repo's ownership/conflict validator
 before deployment, and ARM can update existing named resources.
 
-Next: Step 06.
+Next: [Step 06](#step-06-sign-into-fabric-and-verify-your-account).
 
 ### Step 06 Sign into Fabric and verify your account
+
+Where to be: the Fabric portal browser tab, not Azure portal.
 
 1. Open [Fabric portal](https://app.fabric.microsoft.com).
 2. Sign in with the same user as Step 03.
@@ -292,9 +311,12 @@ Azure portal access does not prove Fabric access.
 A Fabric/Power BI per-user license does not supply Spark capacity by itself.
 The accelerator requires an active supported F capacity in addition to user access.
 
-Next: Step 07. Leave Fabric open; you return here after automated setup.
+Next: [Step 07](#step-07-confirm-permission-to-create-fabric-items).
+Leave Fabric open; you return here after automated setup.
 
 ### Step 07 Confirm permission to create Fabric items
+
+Where to be: Fabric portal with your administrator, or an approval request to them.
 
 Ask the Fabric administrator to verify this setting for **your user/security
 group and selected capacity**, not merely that it is enabled for someone else:
@@ -319,9 +341,11 @@ This setting allows Lakehouse/Environment/Notebook creation; it is not the
 GeoAnalytics integration setting.
 Reference: [Enable Fabric](https://learn.microsoft.com/en-us/fabric/admin/fabric-switch).
 
-Next: Step 08.
+Next: [Step 08](#step-08-confirm-permission-to-create-the-dedicated-workspace).
 
 ### Step 08 Confirm permission to create the dedicated workspace
+
+Where to be: Fabric portal's Workspaces pane; inspect and cancel, do not create.
 
 1. In Fabric's navigation, select **Workspaces**.
 2. Look for **New workspace** at the bottom of the workspace pane.
@@ -341,9 +365,11 @@ and the [tenant settings index](https://learn.microsoft.com/en-us/fabric/admin/t
 Your user must become **Admin** of the new workspace. The script verifies
 this after creation; it does not silently add other people or grant extra roles.
 
-Next: Step 09.
+Next: [Step 09](#step-09-confirm-capacity-access-assignment-rights-and-region).
 
 ### Step 09 Confirm capacity access, assignment rights and region
+
+Where to be: local PowerShell 7, with the approved capacity owner's confirmation.
 
 From PowerShell 7:
 
@@ -380,9 +406,11 @@ Do not promise that F2 has enough headroom because it is visible and active.
 If no capacity is available, stop until an administrator provides one or
 explicitly approves the new-capacity option, cost, region and quota at Step 13.
 
-Next: Step 10.
+Next: [Step 10](#step-10-confirm-arcgis-geoanalytics-is-enabled).
 
 ### Step 10 Confirm ArcGIS GeoAnalytics is enabled
+
+Where to be: Fabric portal with the tenant/capacity administrator, or their request.
 
 Ask the Fabric tenant or capacity administrator to do this:
 
@@ -407,9 +435,11 @@ The repo supplies Runtime **1.3** and disables **Native Execution Engine**.
 Do not manually install GeoAnalytics using `pip` or choose another runtime
 to skip tenant enablement. The included library still needs Esri authorization.
 
-Next: Step 11.
+Next: [Step 11](#step-11-obtain-the-correct-esri-entitlement-and-api-key).
 
 ### Step 11 Obtain the correct Esri entitlement and API key
+
+Where to be: your approved private channel with the Esri subscription owner.
 
 1. Ask your organization's Esri subscription owner whether it has an active
    **ArcGIS GeoAnalytics for Microsoft Fabric** entitlement.
@@ -437,9 +467,11 @@ Stop here if the entitlement/key is missing. This is an external prerequisite,
 not something the Azure button creates. No secret should be pasted into the
 portal template, configuration JSON, Git, or a notebook cell.
 
-Next: Step 12.
+Next: [Step 12](#step-12-confirm-networking-costs-and-administrator-approvals).
 
 ### Step 12 Confirm networking, costs and administrator approvals
+
+Where to be: your approval conversation with Azure, Fabric and network owners.
 
 Ask your Azure/Fabric/network owners to confirm:
 
@@ -478,11 +510,14 @@ You may only move to Step 13 when these prerequisites are confirmed.
 Allow time for administrator work; this cannot be guaranteed to complete
 on the day of the test if approvals are missing.
 
-Next: Step 13. **This is when you press the blue button.**
+Next: [Step 13](#step-13-press-the-blue-button-and-enter-the-azure-parameters).
+**This is when you press the blue button.**
 
 ## 2 Deploy the Azure foundation
 
 ### Step 13 Press the blue button and enter the Azure parameters
+
+Where to be: this guide's button, then Azure portal's Custom deployment form.
 
 Why now: your access, names, capacity, licensing and network approvals are
 confirmed. The button creates the Azure foundation, not the spatial results.
@@ -534,9 +569,12 @@ If review/deployment reports invalid parameters, permissions, policy, name
 conflicts or quota, stop and inspect the error. Do not repeatedly click Create
 or select unrelated existing resources to get past it.
 
-Next: Step 14. Stay in Azure until deployment has succeeded.
+Next: [Step 14](#step-14-record-azure-success-and-the-handoff-outputs).
+Stay in Azure until deployment has succeeded.
 
 ### Step 14 Record Azure success and the handoff outputs
+
+Where to be: Azure subscription deployment Overview/Outputs, then local PowerShell.
 
 1. On the Azure deployment overview, wait for **Deployment succeeded**.
 2. Record the deployment's record name shown on that page, often
@@ -565,11 +603,16 @@ If Azure failed, inspect its error/operations details and resolve the failure
 before initialization. Resources may remain after partial failure.
 
 At this point, **Fabric is not deployed yet**. Do not manually import the
-original notebook or create a Lakehouse. Return to PowerShell for Step 15.
+original notebook or create a Lakehouse.
+
+Next: [Step 15](#step-15-generate-the-nonsecret-local-configuration).
+Return to local PowerShell, not a Fabric notebook or Azure Cloud Shell.
 
 ## 3 Initialize the local handoff
 
 ### Step 15 Generate the nonsecret local configuration
+
+Where to be: local PowerShell 7 at the cloned repository root.
 
 Make sure PowerShell is still in the cloned repository folder:
 
@@ -603,9 +646,11 @@ and supply that `-ConfigPath` to every subsequent command.
 If it reports user/tenant/output mismatch, correct the sign-in or deployment
 record; do not edit IDs to evade the check.
 
-Next: Step 16.
+Next: [Step 16](#step-16-review-names-and-enter-the-five-genuine-confirmations).
 
 ### Step 16 Review names and enter the five genuine confirmations
+
+Where to be: local PowerShell to open the generated JSON in Notepad.
 
 Open the generated local file:
 
@@ -656,9 +701,11 @@ Use JSON booleans `true`, not strings `"true"`. Keep commas between properties;
 do not add a trailing comma after the last property. Do not paste the Esri key
 anywhere into this file. Save with **File > Save**, then close Notepad.
 
-Next: Step 17.
+Next: [Step 17](#step-17-run-prerequisite-validation-and-read-the-result).
 
 ### Step 17 Run prerequisite validation and read the result
+
+Where to be: local PowerShell 7 at the repo root, after saving `customer.json`.
 
 ```powershell
 .\deploy.ps1 validate
@@ -681,11 +728,13 @@ Validation is read-only: it neither provisions resources nor starts Spark.
 It cannot conclusively verify all policies, permissions, entitlement or
 capacity headroom through reads alone.
 
-Next: Step 18 only after exit `0`.
+Next: [Step 18](#step-18-run-the-fabric-finish-command-and-wait) only after exit `0`.
 
 ## 4 Finish Fabric setup
 
 ### Step 18 Run the Fabric finish command and wait
+
+Where to be: local PowerShell 7, with the recorded Azure deployment name ready.
 
 ```powershell
 .\deploy.ps1 deploy -AzureDeploymentName '<portal-deployment-record-name>'
@@ -721,9 +770,12 @@ activity. State under `deploy\state` is checkpointed; do not edit/delete it
 to bypass ownership checks. Resolve the cause, then rerun the **same finish
 command**, not the blue button. No automatic rollback occurs.
 
-Next: Step 19. Now return to the Fabric browser tab.
+Next: [Step 19](#step-19-open-fabric-and-inspect-what-was-created).
+Now return to the Fabric browser tab.
 
 ### Step 19 Open Fabric and inspect what was created
+
+Where to be: Fabric portal's created workspace, then PowerShell for status.
 
 1. Open [Fabric](https://app.fabric.microsoft.com) and confirm the Step 03 user.
 2. Select **Workspaces**, find your recorded `workspaceName`, and open it.
@@ -759,11 +811,14 @@ If it fails, resolve the error before secret setup/run.
 Do not manually create duplicate items, import the original notebook, or
 edit the generated workload to insert secrets.
 
-Next: Step 20. Leave the workspace browser tab open.
+Next: [Step 20](#step-20-enter-the-key-at-the-hidden-powershell-prompt).
+Leave the workspace browser tab open.
 
 ## 5 Configure the Esri key
 
 ### Step 20 Enter the key at the hidden PowerShell prompt
+
+Where to be: your visible local PowerShell 7 terminal, not chat or a notebook cell.
 
 In the local terminal, not Azure/Fabric browser:
 
@@ -798,11 +853,13 @@ network settings; rerun after the cause is resolved. Do not grant broad roles
 or disable policy to suppress the error.
 A successful secret write does not prove Spark can retrieve it.
 
-Next: Step 21.
+Next: [Step 21](#step-21-submit-the-first-run-from-powershell).
 
 ## 6 Prove the small synthetic workload
 
 ### Step 21 Submit the first run from PowerShell
+
+Where to be: local PowerShell 7 at the repo root, with the synthetic file open.
 
 Review the supplied file:
 
@@ -838,9 +895,12 @@ the workspace URL and item/job IDs. The exit code must be `0`.
 Polling allows up to two hours per job; a timeout does not cancel a running job.
 Do not resubmit while the first command/job may still be active.
 
-Next: Step 22 while it runs, then Step 23 after exit `0`.
+Next: [Step 22](#step-22-watch-the-two-jobs-in-fabric) while it runs,
+then [Step 23](#step-23-open-the-six-tables-and-onelake-receipt) after exit `0`.
 
 ### Step 22 Watch the two jobs in Fabric
+
+Where to be: Fabric portal's notebook Recent runs or Monitor; keep PowerShell open.
 
 1. In your Fabric workspace, find the deployed Notebook item.
 2. Use its **More options (...) > Recent runs** action, where available,
@@ -866,9 +926,12 @@ If a job fails, open its run details and find the error. Common stop points:
 | Completed job but missing exit value | Inspect run details; beta exit-value retrieval is a documented accelerator limitation |
 | Command timeout | Check current job status before rerunning; it may still be active |
 
-Next: Step 23 only after terminal success, not merely a green browser job.
+Next: [Step 23](#step-23-open-the-six-tables-and-onelake-receipt) only after
+terminal success, not merely a green browser job.
 
 ### Step 23 Open the six tables and OneLake receipt
+
+Where to be: local PowerShell for names, then the Fabric Lakehouse's Tables/Files.
 
 In PowerShell:
 
@@ -917,9 +980,11 @@ the run ID, Lakehouse binding, run details and manifest before proceeding.
 Some outputs may validly have zero rows, but required origin/grid/daily-state
 outputs cannot be empty for a verified run.
 
-Next: Step 24.
+Next: [Step 24](#step-24-verify-the-sql-analytics-endpoint).
 
 ### Step 24 Verify the SQL analytics endpoint
+
+Where to be: Fabric portal, in the created Lakehouse's SQL analytics endpoint.
 
 1. Return to the workspace item list.
 2. Select the **SQL analytics endpoint** item with the same name as your
@@ -955,9 +1020,13 @@ Do not repeatedly rerun the simulation to force SQL synchronization.
 This endpoint is read-only over the Lakehouse Delta data. You do not need to
 create an Azure SQL database or install a SQL client for this browser test.
 
-Next: Step 25 after the synthetic run and read-back checks are successful.
+Next: optionally [Step 25](#step-25-run-the-small-atlanta-real-population-scenario)
+after synthetic verification, or the [acceptance checklist](#acceptance-checklist)
+to finish with real-population validation marked `NOT RUN`.
 
 ### Step 25 Run the small Atlanta real-population scenario
+
+Where to be: local PowerShell for submission, then Fabric to verify the new outputs.
 
 This step exercises the upstream demo's external census/SVI enrichment.
 It requires the Step 12 public-source network approvals. It is not required
@@ -990,6 +1059,9 @@ Do not jump to that workload on an unmeasured capacity. The provided run uses
 the same model with bounded inputs, not a claim of identical output extent,
 row counts, map rendering or runtime.
 See [architecture and next experiments](./architecture.md).
+
+Next: repeat [Steps 22-24](#step-22-watch-the-two-jobs-in-fabric) for this new run,
+then complete the [acceptance checklist](#acceptance-checklist).
 
 ## Acceptance checklist
 

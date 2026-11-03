@@ -1,0 +1,48 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="accelerator-journey" name="Accelerator journey">
+    <mxGraphModel dx="1040" dy="380" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1040" pageHeight="380" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="stage-1" value="1. Prepare&#xa;You + Copilot: tools and access&#xa;FP01-08 / manual 01-12" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#eff6ff;strokeColor=#93c5fd;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="24" y="24" width="300" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="stage-2" value="2. Deploy Azure&#xa;You: press button, review, Create&#xa;FP09 / manual 13-14" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff7ed;strokeColor=#fdba74;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="370" y="24" width="300" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="stage-3" value="3. Finish Fabric&#xa;Copilot: after your approval&#xa;FP10-11 / manual 15-19" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#eff6ff;strokeColor=#93c5fd;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="716" y="24" width="300" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="stage-4" value="4. Store key&#xa;You: hidden terminal prompt&#xa;FP12 / manual 20" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff7ed;strokeColor=#fdba74;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="24" y="216" width="300" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="stage-5" value="5. Run model&#xa;Copilot: after your approval&#xa;FP13 / manual 21-22" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#eff6ff;strokeColor=#93c5fd;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="370" y="216" width="300" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="stage-6" value="6. Verify results&#xa;You + Copilot: tables and SQL&#xa;FP14, FP16 / manual 23-24" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#f0fdf4;strokeColor=#86efac;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="716" y="216" width="300" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;endArrow=block;strokeColor=#334155;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage-1" target="stage-2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;endArrow=block;strokeColor=#334155;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage-2" target="stage-3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;endArrow=block;strokeColor=#334155;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="stage-3" target="stage-4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="866" y="180"/><mxPoint x="174" y="180"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-45" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;endArrow=block;strokeColor=#334155;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage-4" target="stage-5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge-56" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;endArrow=block;strokeColor=#334155;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage-5" target="stage-6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="note" value="Optional real-source test: verify first, then repeat Run + Verify (FP15 / manual 25)." style="text;html=0;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#334155;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="24" y="346" width="992" height="30" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

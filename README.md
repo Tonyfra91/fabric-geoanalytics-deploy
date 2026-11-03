@@ -1,7 +1,7 @@
 ---
 title: Fabric GeoAnalytics deployment experience
 description: Deploy an Azure foundation with Bicep, finish Fabric setup, and verify a spatial workload inspired by the zombie demo.
-ms.date: 2026-10-31
+ms.date: 2026-11-02
 ---
 
 ## From spatial demo to deployable experience
@@ -48,8 +48,7 @@ screens, success checks, and next action for each step.
 ## The experience
 
 The preferred [Copilot Fast Pass](./docs/copilot-fast-pass.md) executes this
-same accelerator in approved stages. Numbers in the diagram below refer to
-the manual reference, not to a second deployment you must also perform.
+same accelerator in approved stages. Choose one route, not two deployments.
 
 | Stage | What happens | How you verify it |
 |---|---|---|
@@ -62,28 +61,24 @@ the manual reference, not to a second deployment you must also perform.
 
 ### Follow the accelerator in order
 
-```mermaid
-flowchart TD
-    A["01-03: Install tools, get the repo, sign into Azure<br/>See: correct user, tenant and subscription"] --> B["04-12: Check every prerequisite<br/>Azure permissions, providers, Fabric access,<br/>workspace creation, capacity, GeoAnalytics, Esri key, network"]
-    B --> C{"All prerequisites confirmed?"}
-    C -- No --> D["STOP: use the administrator request in the guide<br/>Do not click the blue button yet"]
-    D --> B
-    C -- Yes --> E["13: Press Deploy to Azure<br/>Enter the documented parameters; review costs; Create"]
-    E --> F["14: See Azure Deployment succeeded<br/>Record the portal deployment name and vault outputs"]
-    F --> G["15-17: Initialize local configuration<br/>Enter confirmed approvals; run validate"]
-    G --> H["18: Run the Fabric finish command<br/>Creates workspace, Lakehouse, environment and notebook<br/>Does not rerun Azure or execute the notebook"]
-    H --> I["19: Sign into Fabric with the SAME user<br/>Open the created workspace and inspect all items"]
-    I --> J["20: Enter the Esri key at the hidden terminal prompt<br/>See: Secret stored"]
-    J --> K["21-22: Run the small synthetic test<br/>Observe authorization job, then simulation job"]
-    K --> L["23-24: Open Lakehouse tables and result.json<br/>Check six outputs, row counts and SQL visibility"]
-    L --> M["25: Run the small Atlanta real-population scenario<br/>Compare the spatial model with the source demo"]
-    M --> N["Acceptance checklist and cleanup<br/>Record evidence; delete only owned test resources"]
-```
+[![Six stages: prepare, deploy Azure, finish Fabric, store key, run model, verify results](./docs/images/accelerator-journey.svg)](./docs/images/accelerator-journey.svg)
 
-If Mermaid is unavailable in your viewer, read this sequence:
-tools and identity -> all approvals -> blue button -> Azure success ->
-local configuration -> validation -> Fabric finish -> Fabric inspection ->
-secret prompt -> two notebook jobs -> tables/receipt/SQL -> real-population run.
+Read 1-3 across the top, then 4-6 across the bottom. Click the image for
+full size. This is an overview; use the linked instructions below to execute.
+The labels show the preferred Copilot route. On the manual route, you run
+those same commands yourself instead of asking Copilot to run them.
+
+| Start here                   | Copilot Fast Pass                                                                              | Manual route                                                                                      |
+| ---------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Prepare tools and access     | [FP01](./docs/copilot-fast-pass.md#fp01-check-what-you-need-before-opening-copilot)            | [Step 01](./docs/getting-started.md#step-01-install-and-verify-the-tools)                         |
+| Deploy Azure with the button | [FP09](./docs/copilot-fast-pass.md#fp09-review-parameters-and-press-the-unchanged-blue-button) | [Step 13](./docs/getting-started.md#step-13-press-the-blue-button-and-enter-the-azure-parameters) |
+| Finish Fabric                | [FP10](./docs/copilot-fast-pass.md#fp10-review-the-initialized-configuration-and-validation)   | [Step 15](./docs/getting-started.md#step-15-generate-the-nonsecret-local-configuration)           |
+| Enter the key yourself       | [FP12](./docs/copilot-fast-pass.md#fp12-enter-the-esri-key-yourself-outside-copilot-tools)     | [Step 20](./docs/getting-started.md#step-20-enter-the-key-at-the-hidden-powershell-prompt)        |
+| Run the model                | [FP13](./docs/copilot-fast-pass.md#fp13-separately-approve-the-synthetic-run)                  | [Step 21](./docs/getting-started.md#step-21-submit-the-first-run-from-powershell)                 |
+| Verify outputs               | [FP14](./docs/copilot-fast-pass.md#fp14-read-the-actual-results-in-fabric-and-sql)             | [Step 23](./docs/getting-started.md#step-23-open-the-six-tables-and-onelake-receipt)              |
+
+After synthetic verification, the real-population test is optional. Follow
+the chosen guide; do not jump directly to it or run both routes.
 
 ### Where you work at each stage
 
@@ -176,6 +171,11 @@ See the [live acceptance checklist](./docs/getting-started.md#acceptance-checkli
 
 ## Develop and validate
 
+CI runs the checks below on every push and pull request. Documentation checks
+require ordered steps, explicit location/action/success/next-step checkpoints,
+working links, the unchanged deployment button, and synchronized compact
+diagram labels. They cannot prove current tenant screens or live access.
+
 ```powershell
 .\Get-DemoNotebook.ps1
 .\deploy\tests\Test-Accelerator.ps1
@@ -192,3 +192,19 @@ After editing Bicep, regenerate the portal template:
 The button pins release `v0.1.0`. Updating `main` does not silently change
 that released deployment. A future release must update the button and be
 tagged after validation.
+
+### Edit the overview diagram
+
+The [editable draw.io source](./docs/images/accelerator-journey.drawio) is
+separate from the [SVG shown on GitHub](./docs/images/accelerator-journey.svg).
+Open [diagrams.net](https://app.diagrams.net), choose **Device**, then
+**Open Existing Diagram** (or **File > Open From > Device**) and select the
+downloaded `.drawio` file. Keep six numbered stages and plain-text labels.
+Save the source, then use **File > Export as > SVG** to update the SVG as well.
+Run the documentation checks before committing both files.
+
+Keep the overview short: decisions, errors and detailed commands belong in
+the step-by-step guides, not in a taller flowchart. Validate layout on GitHub
+after publishing. For a first-run usability check, have a new operator follow
+one route and record the first unclear screen/action without exposing secrets;
+fix that checkpoint and rerun CI.
