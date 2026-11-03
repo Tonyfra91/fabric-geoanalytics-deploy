@@ -1,21 +1,42 @@
 ---
 title: Fabric GeoAnalytics deployment experience
-description: Deploy an Azure foundation with Bicep, finish Fabric setup, and verify a spatial workload inspired by the zombie demo.
-ms.date: 2026-11-02
+description: A post-zombie path from spatial demo to real-world location intelligence, starting with guided Azure and Fabric GeoAnalytics deployment.
+ms.date: 2026-11-03
 ---
 
-## From spatial demo to deployable experience
+## Post zombie outbreak: same data, real impact
+
+[![Post zombie outbreak: real-world data flows through Microsoft Fabric and OneLake into ArcGIS and operational experiences. Concept illustration, not deployed output.](./docs/images/post-zombie-outbreak.png)](./docs/images/post-zombie-outbreak.png)
+
+The zombies were the demo. Location intelligence is the opportunity.
+
+The [zombie outbreak demo](https://github.com/SeanKMcG/fabric_zombie_outbreak)
+made a spatial pattern memorable: combine location and population data,
+analyze relationships, simulate change, and inspect results. The post-zombie
+story takes that pattern beyond the fictional scenario, toward questions
+about service coverage, infrastructure exposure, and community resilience.
+
+The broader journey is real-world data, spatial computation in Microsoft
+Fabric with ArcGIS GeoAnalytics, reusable data in OneLake, and ArcGIS
+visualization and operational experiences that help people act.
+This repository starts by making the compute and data foundation deployable
+and repeatable, rather than copying the original blog.
+
+> [!NOTE]
+> The image shows the broader vision, not a deployment screenshot; its maps
+> and metrics are illustrative. This accelerator creates an Azure foundation
+> and Fabric workspace items, then writes six Delta/WKT outputs and a OneLake
+> verification receipt when you run the workload. It does not deploy the
+> pictured GeoParquet outputs, ArcGIS maps, dashboards, Experience Builder
+> apps, or Field Maps workflows. Those are potential next integrations, not
+> completed capabilities. The fictional model is not a public-health forecast.
+> Click the image to read it at full size.
+
+## Start here
 
 Use **Copilot Fast Pass** to guide the deployment, starting with checks and
 the big blue button, then finishing a dedicated Microsoft Fabric workspace
 with a Lakehouse, a GeoAnalytics-compatible environment, and a parameterized notebook.
-
-The [zombie outbreak demo](https://github.com/SeanKMcG/fabric_zombie_outbreak)
-showed a useful spatial pattern: H3 cells, population enrichment, neighborhood
-relationships, and time-stepped results. This repository focuses on what it
-takes to deploy and verify that pattern, not on reproducing the blog.
-
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FTonyfra91%2Ffabric-geoanalytics-deploy%2Fv0.1.0%2Fdeploy%2Fazuredeploy.json)
 
 **[Start Copilot Fast Pass (preferred)](./docs/copilot-fast-pass.md)**
 
@@ -34,6 +55,10 @@ The manual button reference is
 [Step 13](./docs/getting-started.md#step-13-press-the-blue-button-and-enter-the-azure-parameters).
 The guide includes the links, manual approvals, fields, commands, expected
 screens, success checks, and next action for each step.
+
+### Use the Azure button when the guide tells you
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FTonyfra91%2Ffabric-geoanalytics-deploy%2Fv0.1.0%2Fdeploy%2Fazuredeploy.json)
 
 > [!IMPORTANT]
 > The button deploys Azure resources only. It does not create Fabric workspace
