@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 380" role="img" aria-labelledby="title description" font-family="Segoe UI, Arial, sans-serif" font-size="18">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="380" viewBox="0 0 1040 380" role="img" aria-labelledby="title description" font-family="Segoe UI, Arial, sans-serif" font-size="18">
   <title id="title">Six-stage Fabric GeoAnalytics accelerator journey</title>
   <desc id="description">Read stages 1 through 3 across the top, then 4 through 6 across the bottom: prepare, deploy Azure, finish Fabric, store the key, run the model, and verify results. You control the Azure button, secret entry and approvals. Copilot runs the approved repeatable commands.</desc>
   <defs>

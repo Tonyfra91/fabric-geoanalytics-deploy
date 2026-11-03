@@ -243,6 +243,14 @@ if ($MyInvocation.InvocationName -ne '.') {
             $ViewBox[3] -gt 420 -or $ViewBox[2] / $ViewBox[3] -lt 2.5) {
             throw 'SVG overview must stay compact: positive viewBox, height <= 420 and width/height >= 2.5.'
         }
+        foreach ($Index in 0..1) {
+            $Dimension = @('width','height')[$Index]
+            $Value = $Svg.DocumentElement.GetAttribute($Dimension)
+            if ($Value -notmatch '^\d+(?:\.\d+)?(?:px)?$' -or
+                [double]::Parse(($Value -replace 'px$',''), [Globalization.CultureInfo]::InvariantCulture) -ne $ViewBox[2 + $Index]) {
+                throw "SVG $Dimension must match its viewBox to avoid a browser-default thumbnail."
+            }
+        }
         if ($Svg.SelectNodes("//*[local-name()='script' or local-name()='foreignObject']").Count -gt 0) {
             throw 'Overview SVG must use portable, script-free SVG text, not HTML labels.'
         }
