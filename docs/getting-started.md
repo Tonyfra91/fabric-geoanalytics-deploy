@@ -6,6 +6,11 @@ ms.date: 2026-10-31
 
 ## Before you begin
 
+Prefer Copilot to run the repeatable commands?
+Start with [Copilot Fast Pass](./copilot-fast-pass.md), the preferred guided
+route in VS Code. This page remains its detailed manual reference and the
+complete fallback if Copilot is unavailable.
+
 Follow this page from top to bottom. Do not run the README's quick commands
 out of order. The primary path uses Windows, PowerShell 7, and an existing
 active Fabric F capacity. An optional new-capacity path is included at Step 13.

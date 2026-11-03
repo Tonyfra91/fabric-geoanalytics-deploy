@@ -6,9 +6,9 @@ ms.date: 2026-10-31
 
 ## From spatial demo to deployable experience
 
-Start with the big blue button, then finish a dedicated Microsoft Fabric
-workspace with a Lakehouse, a GeoAnalytics-compatible environment, and a
-parameterized notebook.
+Use **Copilot Fast Pass** to guide the deployment, starting with checks and
+the big blue button, then finishing a dedicated Microsoft Fabric workspace
+with a Lakehouse, a GeoAnalytics-compatible environment, and a parameterized notebook.
 
 The [zombie outbreak demo](https://github.com/SeanKMcG/fabric_zombie_outbreak)
 showed a useful spatial pattern: H3 cells, population enrichment, neighborhood
@@ -17,11 +17,20 @@ takes to deploy and verify that pattern, not on reproducing the blog.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FTonyfra91%2Ffabric-geoanalytics-deploy%2Fv0.1.0%2Fdeploy%2Fazuredeploy.json)
 
-**[Start the guided deployment](./docs/getting-started.md)**
+**[Start Copilot Fast Pass (preferred)](./docs/copilot-fast-pass.md)**
 
-For your first test, start at
+For a first test, follow the Fast Pass guide from
+[FP01](./docs/copilot-fast-pass.md#fp01-check-what-you-need-before-opening-copilot).
+It walks you through VS Code setup, skill selection, sign-in, each approval,
+the unchanged blue button, and result verification.
+Copilot runs the repeatable commands; you control permissions, secrets,
+resource creation and compute execution.
+
+Prefer to run the commands yourself?
+[Use the complete manual walkthrough](./docs/getting-started.md), starting at
 [Step 01: install and verify the tools](./docs/getting-started.md#step-01-install-and-verify-the-tools).
-Do not press the button until the walkthrough tells you to at
+In either route, do not press the button until prerequisites are confirmed.
+The manual button reference is
 [Step 13](./docs/getting-started.md#step-13-press-the-blue-button-and-enter-the-azure-parameters).
 The guide includes the links, manual approvals, fields, commands, expected
 screens, success checks, and next action for each step.
@@ -37,6 +46,10 @@ screens, success checks, and next action for each step.
 > Key Vault has public network access in this interactive-user POC.
 
 ## The experience
+
+The preferred [Copilot Fast Pass](./docs/copilot-fast-pass.md) executes this
+same accelerator in approved stages. Numbers in the diagram below refer to
+the manual reference, not to a second deployment you must also perform.
 
 | Stage | What happens | How you verify it |
 |---|---|---|
@@ -93,13 +106,28 @@ secret prompt -> two notebook jobs -> tables/receipt/SQL -> real-population run.
   [upstream attribution and boundaries](./docs/demo-provenance.md)
 * [Detailed operations reference](./deploy/README.md) and
   [architecture and next steps](./docs/architecture.md)
+* [Copilot Fast Pass guide](./docs/copilot-fast-pass.md) and a
+  [repository deployment skill](./.github/skills/fabric-geoanalytics-fast-pass/SKILL.md)
 * Offline regression tests and a template freshness check
 
 The upstream notebook is downloaded locally or supplied by you. It is not
 redistributed in this repository. The adapter removes author bindings,
 cached results, and ArcGIS publishing from the deployed workload.
 
-## Quick path
+## Preferred quick start
+
+1. Follow [Copilot Fast Pass](./docs/copilot-fast-pass.md) to install/open VS Code,
+   clone this repo, and sign into GitHub Copilot.
+2. Choose a local **Copilot** session, **Agent**, and **Manual permissions**.
+3. Select `/fabric-geoanalytics-fast-pass` and send the guide's read-only
+   [starting message](./docs/copilot-fast-pass.md#fp07-start-fast-pass-without-authorizing-deployment).
+4. Follow its checkpoints. Approve each cloud stage separately and enter
+   the Esri key only at the hidden terminal prompt.
+
+This is Copilot-assisted execution, not an unattended deployment or a
+permission bypass. Missing prerequisites stop the workflow.
+
+## CLI reminder
 
 The blocks below are a reminder for an already-prepared operator, not the
 first-test instructions. For a first test, use the

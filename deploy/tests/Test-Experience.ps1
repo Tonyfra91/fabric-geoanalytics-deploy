@@ -163,6 +163,30 @@ if ($MyInvocation.InvocationName -ne '.') {
                 throw "Deployment button is missing or points to the wrong release in $Path."
             }
         }
+        $SkillPath = Join-Path $RepositoryRoot '.github\skills\fabric-geoanalytics-fast-pass\SKILL.md'
+        $Skill = Get-Content -LiteralPath $SkillPath -Raw
+        $Header = [regex]::Match($Skill, '\A---\r?\n(?<fields>.*?)\r?\n---\r?\n', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        if (-not $Header.Success) { throw 'Fast Pass skill requires YAML frontmatter.' }
+        $Fields = $Header.Groups['fields'].Value
+        $Name = [regex]::Match($Fields, '(?m)^name: (?<name>[a-z0-9]+(?:-[a-z0-9]+)*)\r?$').Groups['name'].Value
+        if ($Name -ne (Split-Path (Split-Path $SkillPath -Parent) -Leaf) -or $Name.Length -gt 64) {
+            throw 'Fast Pass skill name must match its folder and discovery constraints.'
+        }
+        $Description = [regex]::Match($Fields, '(?m)^description: "(?<description>[^"\r\n]+)"\r?$').Groups['description'].Value
+        if (-not $Description -or $Description.Length -gt 1024 -or $Description -notmatch 'Fast Pass') {
+            throw 'Fast Pass skill discovery description is missing or invalid.'
+        }
+        if ($Fields -notmatch '(?m)^user-invocable: true\r?$' -or
+            $Fields -notmatch '(?m)^disable-model-invocation: false\r?$') {
+            throw 'Fast Pass skill must remain discoverable and directly user-invocable.'
+        }
+        $FastPass = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'docs\copilot-fast-pass.md') -Raw
+        $Steps = @([regex]::Matches($FastPass, '(?m)^## FP(?<number>\d\d) '))
+        if ($Steps.Count -ne 16 -or
+            (@($Steps | ForEach-Object { [int]$_.Groups['number'].Value }) -join ',') -ne ((1..16) -join ',')) {
+            throw 'Fast Pass guide must contain FP01-FP16 in order.'
+        }
+        Write-Host 'PASS: Fast Pass skill discovery metadata, user invocation and 16 ordered guide steps.'
         Write-Host 'PASS: Portal scope, handoff version, opt-in capacity, secret boundaries, documentation links, and release button URLs.'
         exit 0
     }
