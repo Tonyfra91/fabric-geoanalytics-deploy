@@ -1,13 +1,13 @@
 ---
 title: 02 Deploy Azure
-description: Use the Azure button after prerequisites and record the successful handoff.
-ms.date: 2026-11-03
+description: Create the Azure resources and save the details needed for Fabric setup.
+ms.date: 2026-11-04
 ---
 
 ## 02 Deploy Azure
 
 Complete [01 Start here](../01-start-here/README.md) first.
-This is when you use the blue button, not when you begin checking access.
+You are now ready to use the blue button.
 
 ### Where
 
@@ -26,15 +26,17 @@ Copilot does not press Create for you.
 
 ### See
 
-Azure reports **Deployment succeeded**. Outputs show experience version
-`1.0` and the expected vault identifiers. Record the subscription deployment
-record name, not merely the template's ownership `deploymentName`.
-Fabric workspace items do not exist yet; do not create them manually.
+Azure reports **Deployment succeeded**. The guide shows you where to find
+the deployment name and Key Vault details to save for the next step.
+Use the name shown on the deployment page; it may differ from the
+`deploymentName` you entered in the form.
+Fabric setup comes next, so you do not need to create its items yourself.
 
 ### Next
 
 After verifying Azure success and outputs, open
 [03 Finish Fabric](../03-finish-fabric/README.md).
-If deployment failed, stay here and resolve its actual error.
+If Azure reports an error, resolve it before continuing. The guide explains
+which details to check and when to ask your administrator for help.
 
 [Previous: 01 Start here](../01-start-here/README.md)

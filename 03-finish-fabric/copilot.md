@@ -1,12 +1,13 @@
 ---
 title: 03 Finish Fabric - Copilot Fast Pass
-description: Numbered Fabric GeoAnalytics journey instructions and navigation.
-ms.date: 2026-11-03
+description: Create the Fabric workspace items with Copilot and enter your Esri key safely.
+ms.date: 2026-11-04
 ---
 
 [Stage overview](./README.md) | [Journey home](../README.md#start-here)
 
-These folders organize the reading journey. Run commands from the repository root, not from this folder.
+Run terminal commands from the main repository folder containing `deploy.ps1`,
+not from this numbered subfolder.
 
 ## FP10 Review the initialized configuration and validation
 
@@ -24,14 +25,15 @@ where appropriate. Approve that command after reviewing its arguments.
 See/expect: local `deploy\config\customer.json` is created without overwriting
 an existing file. It contains no API key. Copilot should ask before changing
 the five confirmation flags and map each to your actual FP08 approvals.
-It cannot infer all flags are true from “I have Azure access.”
+Confirm each one separately; Azure access alone does not cover all five.
 
 Review the file in VS Code, including subscription/tenant IDs, capacity,
 Azure names, generated Fabric names and each confirmation.
 If Copilot presents edits, review/keep only the correct configuration changes.
 The manual example is
 [Step 16](./manual.md#step-16-review-names-and-enter-the-five-genuine-confirmations).
-No accelerator source code should be modified to bypass an error.
+If a check fails, resolve the reported problem rather than changing the code
+to skip it.
 
 Copilot then runs `.\deploy.ps1 validate` and reads its exit code/details.
 Expect automated `Pass`, approvals `Confirmed`, and exit `0`.
@@ -77,8 +79,8 @@ user, select **Workspaces**, then your generated workspace name. Inspect its
 Lakehouse, Environment and Notebook using
 [manual Step 19](./manual.md#step-19-open-fabric-and-inspect-what-was-created).
 Do not select **Run all**, manually import the original, or insert a key.
-Tell Copilot whether those items are visible. It cannot claim a browser check
-it did not perform or receive confirmation for.
+Tell Copilot whether you can see those items. This confirms the browser check
+as well as the command results.
 
 ## FP12 Enter the Esri key yourself outside Copilot tools
 

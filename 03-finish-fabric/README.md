@@ -1,13 +1,13 @@
 ---
 title: 03 Finish Fabric
-description: Initialize configuration, validate, finish Fabric and enter the key safely.
-ms.date: 2026-11-03
+description: Create the Fabric workspace items and store your Esri key safely.
+ms.date: 2026-11-04
 ---
 
 ## 03 Finish Fabric
 
 Complete [02 Deploy Azure](../02-deploy-azure/README.md) first.
-This stage uses the existing Azure deployment; it must not submit another one.
+This step uses the Azure resources you just created.
 
 ### Where
 
@@ -22,22 +22,23 @@ Continue the route you selected:
 * [Copilot Fast Pass: FP10-FP12](./copilot.md)
 * [Manual alternative: Steps 15-20](./manual.md)
 
-Review the generated configuration and five genuine confirmations.
-Validation must pass before you approve Fabric setup.
-You run the secret-entry command yourself; never paste the key into Chat.
+Review the settings file and confirm the five permissions and licensing
+approvals. Once the checks pass, approve Fabric setup.
+When prompted, run the key-entry command yourself and enter the key in the
+terminal. Keep it out of Chat and configuration files.
 
 ### See
 
-Status reports `Configured`, runtime `1.3` and verified notebook bindings.
-The named workspace contains the expected Lakehouse, environment and notebook.
-The secret command reports successful storage and metadata verification.
-Runtime secret access is not proven until the next stage's preflight.
-No simulation should have been run yet.
+Your Fabric workspace contains a Lakehouse, environment and notebook.
+The status command reports `Configured` and runtime `1.3`, with the notebook
+connected to the expected items. The key-entry command confirms that the
+key was stored.
+You have not run the model yet. The next step checks that Fabric can use
+the key before running the simulation.
 
 ### Next
 
 Open [04 Run and verify](../04-run-and-verify/README.md).
-Fabric setup and secret storage do not authorize a compute run; approve it
-separately after reviewing the target and bounded inputs.
+You will review the small sample run and approve it separately.
 
 [Previous: 02 Deploy Azure](../02-deploy-azure/README.md)

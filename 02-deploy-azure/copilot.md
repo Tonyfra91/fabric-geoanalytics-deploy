@@ -1,12 +1,13 @@
 ---
 title: 02 Deploy Azure - Copilot Fast Pass
-description: Numbered Fabric GeoAnalytics journey instructions and navigation.
-ms.date: 2026-11-03
+description: Review Azure settings with Copilot and create the Azure resources in the portal.
+ms.date: 2026-11-04
 ---
 
 [Stage overview](./README.md) | [Journey home](../README.md#start-here)
 
-These folders organize the reading journey. Run commands from the repository root, not from this folder.
+Run terminal commands from the main repository folder containing `deploy.ps1`,
+not from this numbered subfolder.
 
 ## FP09 Review parameters and press the unchanged blue button
 
@@ -42,5 +43,6 @@ Azure shows Deployment succeeded. The subscription deployment record name is
 
 Replace the placeholder with the actual name; do not use the template ownership
 name unless it really is also the record name. Do not send keys/tokens.
-If Azure failed, report the redacted error and stop. Do not claim success
-because a vault appears in the portal.
+If Azure reports a failure, share the error with Copilot after removing
+private details. Wait for **Deployment succeeded** before continuing;
+a visible vault alone does not mean setup is complete.

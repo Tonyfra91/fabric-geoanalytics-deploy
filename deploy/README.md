@@ -1,15 +1,15 @@
 ---
 title: Deployment operations reference
 description: Bicep-led deployment automation for Azure and Microsoft Fabric resources.
-ms.date: 2026-10-30
+ms.date: 2026-11-04
 ---
 
 ## Status and architecture
 
 First-time users should begin at [01 Start here](../01-start-here/README.md).
-This folder contains deployment implementation and the operations reference,
-not the first stage of the reading journey.
-This reference also covers the alternative CLI-only deployment.
+Use this optional reference for implementation details, troubleshooting,
+maintenance or the alternative CLI-only deployment. It is not required
+reading for the guided setup.
 Obtain the pinned upstream notebook locally with `.\Get-DemoNotebook.ps1` first.
 
 Bicep-led deployment automation for Azure and Microsoft Fabric resources.
@@ -335,11 +335,107 @@ according to the retention policy; do not promise immediate name reuse.
 | Job succeeds but run fails   | Inspect beta exit-value retrieval and output-contract verification      |
 | Upstream fingerprint fails   | Review source/adapter compatibility before changing the pinned hash     |
 
+## Architecture details
+
+The following details are optional reference, not additional steps in the
+guided setup.
+
+### Separate the resource planes
+
+```text
+README blue button
+    -> versioned ARM JSON compiled from Bicep
+    -> subscription / dedicated resource group
+       -> RBAC Key Vault
+       -> optional new Fabric capacity
+
+Interactive PowerShell finish
+    -> verify completed Azure deployment and identity
+    -> read-only prerequisite and ownership checks
+    -> Fabric REST workspace / capacity assignment
+    -> Lakehouse / published environment / notebook
+
+Explicit secret and run commands
+    -> hidden prompt writes Esri key
+    -> notebook runtime retrieves key from Key Vault
+    -> authorization probe
+    -> spatial simulation
+    -> six Delta tables + OneLake receipt + read-back counts
+```
+
+ARM manages Azure resources. Fabric REST manages workspace items.
+The standard Azure button accepts ARM JSON, not a remote Bicep file:
+[Microsoft's button guidance](https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-to-azure-button).
+
+The existing ownership marker `fabric-zombie-outbreak` remains in resource tags
+and Fabric descriptions so the reused adapter/lifecycle checks stay consistent.
+The repository name and deployment-first presentation do not silently change
+that ownership contract.
+
+### Lessons carried forward from the demo
+
+| Demo pattern                        | Deployment lesson                                                      | Next experiment                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| H3 cells and spatial joins          | Fix runtime and engine compatibility before workload execution         | Compare grid resolutions at bounded study radii                 |
+| Census and vulnerability enrichment | Treat source coverage, schema, and access as separate prerequisites    | Validate a small real-population US run                         |
+| Iterative movement graph            | Capacity visibility does not prove Spark headroom                      | Measure wall time and memory before increasing days/radius      |
+| Spatial outputs                     | Define an explicit data contract, not merely a successful notebook job | Confirm Delta read-back and SQL visibility                      |
+| Optional downstream publication     | Keep ingestion/compute separate from destination credentials           | Design a separately consented ArcGIS publishing stage           |
+| Notebook parameters                 | Separate workload inputs from infrastructure and secrets               | Adapt the pattern to service coverage or accessibility analysis |
+
+The fictional simulation is a teaching workload, not an epidemiological,
+emergency-planning, or public-health prediction.
+
+### Why not one unattended button yet
+
+Embedding Fabric provisioning in an ARM deployment script would introduce a new
+runtime identity, token acquisition, consent, and credential lifecycle.
+The current interactive-user model cannot be replaced by a managed identity
+without proving the exact Fabric APIs and runtime Key Vault access path.
+
+The two-stage experience makes that boundary visible instead of hiding an
+unsupported identity assumption behind an Azure success screen.
+
+### Evidence-driven roadmap
+
+1. Complete the [live acceptance checklist](../04-run-and-verify/manual.md#acceptance-checklist)
+   in a dedicated tenant/workspace.
+2. Validate real-source coverage and schema, then measure bounded scale increases.
+3. Evaluate private networking and separate key-writer/key-reader roles.
+4. Add concurrency locking and stronger removal ownership before automating cleanup.
+5. Evaluate the beta job exit-value dependency and compatible stable alternatives.
+6. Prove a least-privilege unattended identity for each Fabric operation before
+   adding deployment-script orchestration or another one-button finish experience.
+
+These are future capabilities, not switches supported by this release.
+Existing capacity lifecycle, ArcGIS publication, unattended execution, and
+automatic cleanup remain out of scope.
+
 ## Validation and remaining engineering work
 
+For maintainers changing the accelerator, run the following from the
+repository root. These are not additional steps for first-time users.
+
 ```powershell
-az bicep build --file .\deploy\main.bicep --stdout
+.\Get-DemoNotebook.ps1
 .\deploy\tests\Test-Accelerator.ps1
+.\deploy\tests\Test-Experience.ps1
+.\deploy\scripts\Build-Template.ps1 -Check
+```
+
+After editing Bicep, regenerate the portal template:
+
+```powershell
+.\deploy\scripts\Build-Template.ps1
+```
+
+The Azure button pins release `v0.1.0`. Updating `main` does not change
+that released deployment. A future release must update the button and be
+tagged after validation.
+
+Once signed in and configured, check the target tenant without deploying:
+
+```powershell
 .\deploy.ps1 validate
 .\deploy.ps1 deploy -WhatIf
 ```

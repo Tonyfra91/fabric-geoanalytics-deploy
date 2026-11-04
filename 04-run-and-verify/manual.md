@@ -1,12 +1,13 @@
 ---
 title: 04 Run and verify - Manual walkthrough
-description: Numbered Fabric GeoAnalytics journey instructions and navigation.
-ms.date: 2026-11-03
+description: Run the small sample, open its tables and check the results in Fabric and SQL.
+ms.date: 2026-11-04
 ---
 
 [Stage overview](./README.md) | [Journey home](../README.md#start-here)
 
-These folders organize the reading journey. Run commands from the repository root, not from this folder.
+Run terminal commands from the main repository folder containing `deploy.ps1`,
+not from this numbered subfolder.
 
 ## Prove the small synthetic workload
 
@@ -218,51 +219,35 @@ then complete the [acceptance checklist](#acceptance-checklist).
 
 ## Acceptance checklist
 
-Before calling the first test complete, record:
+Before finishing, check each result below:
 
 * [ ] Steps 04-12 approvals came from the correct owners, not inferred from login.
 * [ ] Azure deployment succeeded and its outputs match the approved subscription/user.
 * [ ] `validate` exits `0`.
 * [ ] Fabric finish exits `0` and did not require another Azure deployment.
 * [ ] Fabric workspace contains the expected Lakehouse, environment and notebook.
-* [ ] Status verifies Runtime 1.3 and notebook bindings.
+* [ ] Status shows runtime `1.3` and the notebook connected to the expected items.
 * [ ] Secret is stored without exposing its value.
-* [ ] Preflight and synthetic simulation succeed with verified exit/output contracts.
+* [ ] The access check and sample-data run succeed, and `run` exits `0`.
 * [ ] Six output tables and `result.json` are readable with required nonempty outputs.
-* [ ] SQL table previews/counts match the Spark receipt.
-* [ ] If claiming real-source replication, Step 25 enrichment also succeeds.
+* [ ] SQL table previews and row counts match the run summary.
+* [ ] The optional real-population run succeeds, or is recorded as `NOT RUN`.
 
-Store evidence in your customer-controlled records. Do not post API keys,
+Keep your checklist and run IDs in your organization's approved storage. Do not post API keys,
 bearer tokens, personal data or customer resource identifiers to public issues.
-Offline tests and this walkthrough are not live acceptance evidence.
+Leave any unfinished check unchecked.
 
-For repeat setup, rerun the same finish command after inspecting ownership/state.
-It reuses owned items but republishes the environment and updates the generated
-notebook, potentially replacing custom edits. Do not redeploy solely to inspect results.
+To view completed results, open Fabric rather than repeating setup.
+Repeating Fabric setup republishes the environment and updates the generated
+notebook, which can replace your custom edits.
 
 ## Alternate path without the button
 
-This is for operators who deliberately choose CLI-only Azure provisioning.
-It is not the next command after a successful blue-button deployment.
-
-```powershell
-Copy-Item .\deploy\config\customer.sample.json .\deploy\config\customer.json
-notepad .\deploy\config\customer.json
-```
-
-Fill all names/GUIDs/capacity fields and genuine confirmations using the
-[prerequisite steps in 01 Start here](../01-start-here/manual.md), then:
-
-```powershell
-.\Get-DemoNotebook.ps1
-.\deploy.ps1 validate
-.\deploy.ps1 deploy -WhatIf
-.\deploy.ps1 deploy
-```
-
-ARM what-if does not preview Fabric mutations. Continue at
-[Step 19](../03-finish-fabric/manual.md#step-19-open-fabric-and-inspect-what-was-created)
-only after deployment succeeds.
+Skip this section if you followed the guided setup above.
+If you prefer an advanced command-line-only setup, choose it **instead of**
+the Azure button before starting. Its commands are in the optional
+[technical reference](../deploy/README.md#configure-and-validate).
+It is not a follow-up to a successful deployment.
 
 ## Cleanup and troubleshooting
 
@@ -294,5 +279,5 @@ not credentials or unredacted tenant/resource data.
 ## Continue to 05 Next steps
 
 After completing the acceptance checklist, you may stop or open
-[05 Next steps](../05-next-steps/README.md) for architecture and future experiments.
-That optional reading is not authorization for another deployment or job.
+[05 Next steps](../05-next-steps/README.md) for ideas to explore.
+Review the target and costs before separately approving any new run.

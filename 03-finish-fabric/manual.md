@@ -1,12 +1,13 @@
 ---
 title: 03 Finish Fabric - Manual walkthrough
-description: Numbered Fabric GeoAnalytics journey instructions and navigation.
-ms.date: 2026-11-03
+description: Create the Fabric workspace items and store the Esri key using a hidden prompt.
+ms.date: 2026-11-04
 ---
 
 [Stage overview](./README.md) | [Journey home](../README.md#start-here)
 
-These folders organize the reading journey. Run commands from the repository root, not from this folder.
+Run terminal commands from the main repository folder containing `deploy.ps1`,
+not from this numbered subfolder.
 
 ## Initialize the local handoff
 

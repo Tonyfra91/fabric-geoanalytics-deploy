@@ -1,12 +1,13 @@
 ---
 title: 04 Run and verify - Copilot Fast Pass
-description: Numbered Fabric GeoAnalytics journey instructions and navigation.
-ms.date: 2026-11-03
+description: Approve the small sample run, inspect its results and choose whether to try real data.
+ms.date: 2026-11-04
 ---
 
 [Stage overview](./README.md) | [Journey home](../README.md#start-here)
 
-These folders organize the reading journey. Run commands from the repository root, not from this folder.
+Run terminal commands from the main repository folder containing `deploy.ps1`,
+not from this numbered subfolder.
 
 ## FP13 Separately approve the synthetic run
 
@@ -19,7 +20,8 @@ These folders organize the reading journey. Run commands from the repository roo
 
 Copilot should show `smoke-run.json` settings: two days, 10 km, H3 resolution 6,
 synthetic population, seed 42, overwrite disabled. It explains that the command
-uses paid Spark capacity and submits preflight plus simulation.
+uses paid Spark capacity. It first runs an access check, called preflight,
+then submits the simulation if that check passes.
 
 After reviewing that proposal, tell it:
 
@@ -58,7 +60,7 @@ Copilot runs status and reads the existing nonsecret manifest. It should supply:
 
 * Your workspace URL and generated Lakehouse/notebook names
 * The actual run ID, six full table names, and Spark read-back counts
-* The exact receipt folder, `Files/zombie_outbreak/run_id=<actual ID>/result.json`
+* The run summary, `Files/zombie_outbreak/run_id=<actual ID>/result.json`
 * SQL examples using actual table names, with the schema to verify in the explorer
 
 You open the Lakehouse and SQL analytics endpoint and follow
@@ -66,9 +68,9 @@ You open the Lakehouse and SQL analytics endpoint and follow
 That reference covers each click, schema/table expansion, file preview,
 **New SQL query**, **Run**, and comparison with receipt counts.
 
-Do not assume SQL synchronization because Spark succeeded. Tell Copilot
-whether the previews/counts are visible and match. It must distinguish script-
-verified results from your manually verified UI/SQL evidence.
+SQL tables may take a little longer to appear after the run. Tell Copilot
+when you can see them and whether the row counts match the run summary.
+Keep any remaining SQL check marked as incomplete until you have checked it.
 You need no separate SQL database/client or ArcGIS publishing credentials.
 
 ## FP15 Separately approve the small Atlanta real-population run
@@ -80,8 +82,8 @@ You need no separate SQL database/client or ArcGIS publishing credentials.
 | See        | A new verified run ID/output set, or a clear `NOT RUN` status                                                                              |
 | Next       | Repeat [FP14](#fp14-read-the-actual-results-in-fabric-and-sql) for the new names, then [FP16](#fp16-finish-with-evidence-or-resume-safely) |
 
-This is the bounded scenario closest to the source demo's real census/SVI
-enrichment. It uses Atlanta coordinates, three days, 10 km, H3 resolution 6,
+This small run uses real US population and social-vulnerability data,
+as in the source demo. It uses Atlanta coordinates, three days, 10 km, H3 resolution 6,
 real population, seed 42, and overwrite disabled.
 Confirm the public-source network and Esri prerequisites still hold.
 
@@ -124,10 +126,10 @@ and checks not performed. Do not provision, run another job, delete anything,
 commit/push local state, or expose credentials.
 ```
 
-Expect an evidence table, not an unsupported “everything worked” claim.
-The [acceptance checklist](./manual.md#acceptance-checklist) is the
-completion standard. Cloud deployment has not been proven merely because
-offline checks and the Copilot skill load correctly.
+Expect a summary of what worked, what you checked in Fabric and anything
+still unfinished. Use the
+[completion checklist](./manual.md#acceptance-checklist) before finishing;
+successful local checks alone do not confirm a working cloud deployment.
 
 To stop, select **Stop** in Chat. If a cloud job was already submitted, stopping
 Copilot is not a guarantee that job was cancelled. Check its current status.

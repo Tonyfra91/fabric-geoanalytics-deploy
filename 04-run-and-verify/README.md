@@ -1,7 +1,7 @@
 ---
 title: 04 Run and verify
-description: Prove the synthetic workload, inspect outputs and separately approve optional real data.
-ms.date: 2026-11-03
+description: Run the small sample, open its results and optionally try real population data.
+ms.date: 2026-11-04
 ---
 
 ## 04 Run and verify
@@ -21,25 +21,27 @@ Continue the route you selected:
 * [Copilot Fast Pass: FP13-FP16](./copilot.md)
 * [Manual alternative: Steps 21-25 and acceptance](./manual.md)
 
-Approve one bounded synthetic run first. Verify it before separately
-approving the optional real-population test. Do not submit a second run
-because a browser looks idle or a command timed out; inspect the existing job.
+Start with the small synthetic run, which uses generated sample population
+data. Check its results before deciding whether to approve the optional
+real-population run.
+If a command times out or the browser looks idle, check the existing job
+before starting another one; it may still be running.
 
 ### See
 
-Preflight and simulation succeed, and six Delta/WKT output tables plus a
-OneLake `result.json` receipt are verified. Inspect required nonempty outputs
-and compare SQL visibility/counts with the Spark receipt.
-This is table-based verification, not a deployed map or dashboard.
-Record real-population validation as `NOT RUN` if you decline it.
-Use the [acceptance checklist](./manual.md#acceptance-checklist) before calling
-the test complete.
+An access check runs first, followed by the simulation. When both succeed,
+you can open six results tables and a `result.json` run summary in OneLake.
+The guide shows you how to check the data and compare SQL row counts with
+that summary. You will inspect tables, not a map or dashboard.
+If you skip the real-population run, record it as `NOT RUN`.
+Use the [completion checklist](./manual.md#acceptance-checklist) to finish.
 
 ### Next
 
-After acceptance, open [05 Next steps](../05-next-steps/README.md) to understand
-the architecture and choose a future experiment, or stop here.
-Cleanup is separate, destructive and owner-approved:
-[cleanup and troubleshooting](./manual.md#cleanup-and-troubleshooting).
+After checking your results, you can stop or open
+[05 Next steps](../05-next-steps/README.md) for ideas.
+When you no longer need the resources, follow the
+[cleanup guide](./manual.md#cleanup-and-troubleshooting).
+Deletion needs the resource owner's approval.
 
 [Previous: 03 Finish Fabric](../03-finish-fabric/README.md)

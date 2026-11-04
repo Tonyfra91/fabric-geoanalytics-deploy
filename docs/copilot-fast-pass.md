@@ -1,14 +1,14 @@
 ---
-title: copilot guide index
-description: Numbered Fabric GeoAnalytics journey instructions and navigation.
-ms.date: 2026-11-03
+title: Copilot Fast Pass index
+description: Find your step in the guided Copilot setup.
+ms.date: 2026-11-04
 ---
 
 ## This guide now follows the numbered folders
 
-The instructions now live in the numbered journey folders at the repository root. This page preserves existing links; it is not a second walkthrough.
-
-Start with [01 Start here](../01-start-here/README.md), or continue directly to [the moved guide](../01-start-here/copilot.md). Keep the same route as you move between stages.
+New here? Start with [01 Start here](../01-start-here/README.md).
+Otherwise, open [Copilot Fast Pass](../01-start-here/copilot.md)
+or choose your step below.
 
 ## Use Copilot as your deployment guide
 

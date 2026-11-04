@@ -1,12 +1,13 @@
 ---
 title: 01 Start here - Manual walkthrough
-description: Numbered Fabric GeoAnalytics journey instructions and navigation.
-ms.date: 2026-11-03
+description: Install the tools and confirm the access needed for Azure and Fabric setup.
+ms.date: 2026-11-04
 ---
 
 [Stage overview](./README.md) | [Journey home](../README.md#start-here)
 
-These folders organize the reading journey. Run commands from the repository root, not from this folder.
+Run terminal commands from the main repository folder containing `deploy.ps1`,
+not from this numbered subfolder.
 
 
 ## Before you begin
@@ -42,22 +43,22 @@ an administrator's account midway through deployment. A helper can approve
 permissions, but the actual deployment user must be the user entered into the
 template's `userObjectId` field.
 
-UI labels below follow the linked Microsoft/Esri guidance checked on
-2026-10-31. Your tenant may have an older navigation layout. If a named page
-is unavailable, use the documented alternative or ask the named owner;
-do not substitute a similarly named setting. Expected examples below are not
-screenshots or evidence of a completed live deployment.
+Menus can vary between tenants. If you cannot find a named page, use the
+alternative shown in the step or ask the administrator identified there.
+Do not substitute a similarly named setting.
+Use your own account, resource names and IDs wherever an example is shown.
 
 ### What this test reproduces
 
-The accelerator retains the pinned upstream demo's spatial simulation logic:
-Atlanta origin, H3 grid, neighborhood graph, daily spread, and, in Step 25,
-US census/SVI enrichment. It starts smaller than the source demo so you can
-verify setup before spending more compute.
+You will run the demo's spatial simulation from an Atlanta starting point:
+a grid of hexagonal cells (H3), movement between nearby cells and daily spread.
+Step 25 adds real US population and social-vulnerability data.
+The first run is smaller than the source demo so you can check the setup
+before using more compute.
 
 It does **not** reproduce Sean's optional ArcGIS Online/Enterprise publishing,
 GeoParquet-only output presentation, or original inline map. It generates six
-Delta tables with WKT geometry and a verification receipt instead. No Power BI
+results tables with geometry stored as text (WKT) and a run summary instead. No Power BI
 report, semantic model, dashboard, or hosted map is deployed.
 You will inspect the spatial-model results through Fabric tables and SQL.
 The fictional model is a teaching exercise, not an outbreak forecast.
@@ -462,10 +463,9 @@ See/expect: explicit entitlement confirmation and a usable key available to you.
 The authoritative authorization requirement is documented at
 [Esri GeoAnalytics for Fabric authorization](https://developers.arcgis.com/geoanalytics-fabric/authorization/).
 
-There is no verified universal self-service “generate key” screen documented
-by this repo for every Esri entitlement path. Do not guess an ArcGIS Online
-or ArcGIS developer API-key screen. A generic basemap/location-services key,
-ArcGIS Online login, or Azure key is not proof of GeoAnalytics authorization.
+The key-provisioning process depends on your Esri subscription, so ask the
+subscription owner for the correct route. A generic basemap/location-services
+key, ArcGIS Online login or Azure key will not authorize GeoAnalytics.
 If the owner supplies only username/password, ask for the API-key route:
 this accelerator supports a hidden API-key prompt, not password-based auth.
 

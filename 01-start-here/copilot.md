@@ -1,31 +1,29 @@
 ---
 title: 01 Start here - Copilot Fast Pass
-description: Numbered Fabric GeoAnalytics journey instructions and navigation.
-ms.date: 2026-11-03
+description: Prepare your computer and accounts, then start guided setup with Copilot.
+ms.date: 2026-11-04
 ---
 
 [Stage overview](./README.md) | [Journey home](../README.md#start-here)
 
-These folders organize the reading journey. Run commands from the repository root, not from this folder.
+Run terminal commands from the main repository folder containing `deploy.ps1`,
+not from this numbered subfolder.
 
 
 ## Use Copilot as your deployment guide
 
-This is the preferred first-test route. You read one step, do the named action,
+This is the recommended route. Read one step, do the named action,
 and let **GitHub Copilot in VS Code on your computer** run the repeatable
 commands. You do not need to know Azure administration, Fabric REST, or Bicep
-syntax, but you must already have the approved Azure/Fabric access and Esri
-prerequisites. Copilot checks them; it cannot create entitlements or grant
-itself permissions.
+syntax. You will need the Azure/Fabric permissions and Esri license listed
+below. Copilot helps you check them, but cannot grant access or supply a license.
 
 The [manual walkthrough](./manual.md) is the detailed screen-by-screen
 reference and fallback, not a second deployment you need to run.
-The Azure button and Bicep template remain unchanged.
 
-The result is the same deployed model and small synthetic/Atlanta real-population
-tests as the manual route. It is not Sean's optional ArcGIS publication,
-original map presentation, or a promise of identical large-run outputs.
-This repo writes verified Delta/WKT outputs. See
+Both routes set up the same model and small sample-data and Atlanta
+real-population runs. You will inspect results in Fabric tables and SQL,
+not Sean's original map or optional ArcGIS publication. See
 [what the test reproduces](./manual.md#what-this-test-reproduces).
 
 ### Who does what
@@ -39,9 +37,9 @@ This repo writes verified Delta/WKT outputs. See
 | Verify metadata and run approved preflight/simulation jobs           | Enter the Esri key in a hidden terminal prompt and approve compute |
 | Extract actual run/table names and explain SQL checks                | Inspect Fabric UI and confirm Lakehouse/SQL visibility             |
 
-Keep **Manual permissions** enabled. This skill is guidance to the model,
-not a security boundary or a replacement for VS Code tool approval.
-Never select blanket approval, bypass, or unattended permissions for this test.
+Keep **Manual permissions** enabled and review each command before approving it.
+The skill tells Copilot how to help; it does not prevent it from making a
+mistake. Do not select blanket approval or unattended permissions.
 
 ### Fast Pass sequence
 
@@ -58,11 +56,11 @@ Do not continue when its success condition has not been met.
 | Checkpoint | Instruction                                                                          |
 | ---------- | ------------------------------------------------------------------------------------ |
 | Where      | Your computer, with your private access/approval notes                               |
-| Do         | Confirm the prerequisites listed below; ask the owner about unknown items            |
-| See        | Confirmed access and entitlement, not merely a successful login                      |
-| Next       | [FP02](#fp02-install-vs-code-and-the-local-tools) only after prerequisites are known |
+| Do         | Review the checklist below and note anything you still need to confirm |
+| See        | You know which accounts, approvals and license to check |
+| Next       | [FP02](#fp02-install-vs-code-and-the-local-tools) to prepare your computer |
 
-Have these ready:
+Check that you have, or know whom to ask for, the following:
 
 * A Windows computer permitted to install/run VS Code, PowerShell 7, Git,
   Azure CLI, Bicep and Python
@@ -81,14 +79,17 @@ Your GitHub Copilot account can differ from your Azure/Fabric account.
 The Azure browser, Fabric browser and Azure CLI must all use the **same**
 deployment user/tenant. A Copilot plan supplies neither Azure nor Fabric access.
 
-If any item is unknown, stop and use
-[manual prerequisite Steps 03-12](./manual.md#step-03-choose-the-user-tenant-and-azure-subscription)
-and their administrator request. Do not tell Copilot “assume all permissions”
-or mark an approval true because an API read succeeded.
+You do not need to collect every ID before installing the tools. Continue
+with local preparation below; FP08 helps you find the values and confirm
+access. For missing permissions, use the
+[administrator request in manual Step 12](./manual.md#step-12-confirm-networking-costs-and-administrator-approvals).
+Wait for the required approvals before continuing to Azure deployment.
+Do not ask Copilot to assume permissions or treat a successful sign-in as approval.
 Use an organization-approved Copilot account and data-handling policy;
 even nonsecret tenant/resource configuration can be organization-sensitive.
 
-See/expect: confirmed access, not a new cloud deployment.
+See/expect: a checklist of what you have and what is still needed. Nothing
+has been deployed.
 
 ## FP02 Install VS Code and the local tools
 
@@ -248,8 +249,8 @@ commands/file edits. That capability is not authorization to provision or run co
 2. Add the following starting message and send it:
 
 ```text
-Start Copilot Fast Pass for this repository. I have approved Azure/Fabric access,
-but I am new to deployment. Follow the skill and 01-start-here/copilot.md.
+Start Copilot Fast Pass for this repository. I am new to Azure/Fabric
+deployment. Follow the skill and 01-start-here/copilot.md.
 Begin with read-only checks and local preparation only. Check the tools,
 repository state and current sign-in. Ask for missing nonsecret values one
 at a time. Do not create/update cloud resources, run Spark, retrieve secrets,
@@ -290,8 +291,9 @@ If discovery/attachment remains unavailable, stop and use the manual guide.
 | See        | Preparation is verified or clearly blocked; no cloud writes occurred                                                            |
 | Next       | [FP09](../02-deploy-azure/copilot.md#fp09-review-parameters-and-press-the-unchanged-blue-button) only when preparation is ready |
 
-Copilot should check versions, Git status, the pinned demo download, offline
-tests and Bicep freshness. Review each requested command before approving it.
+Copilot checks your tools, the downloaded files and the deployment template.
+It also runs the repository's local checks. Review each requested command
+before approving it.
 If a tool is missing, it should stop and give installation instructions, not
 silently install software or change organization policy.
 
@@ -308,6 +310,11 @@ Supply only requested nonsecret values, one at a time:
 * Fresh ownership, dedicated group and available vault names
 * The five prerequisite approvals, based on your actual administrator/Esri confirmations
 
+If you do not know an ID, ask Copilot to help you find it using
+[manual Step 03 for your account and subscription](./manual.md#step-03-choose-the-user-tenant-and-azure-subscription)
+and [manual Step 09 for capacity details](./manual.md#step-09-confirm-capacity-access-assignment-rights-and-region).
+Keep these values in a private note. Never send the Esri key.
+
 See/expect: tool/test results, account/capacity checks, and a checkpoint table:
 
 | Status         | Meaning                                                           |
@@ -317,7 +324,8 @@ See/expect: tool/test results, account/capacity checks, and a checkpoint table:
 | `BLOCKED`      | A failure or unavailable prerequisite prevents progress           |
 | `NOT RUN`      | The stage has not happened                                        |
 
-The offline tests should report 39 existing checks and 22 handoff checks,
-plus documentation/template checks. They do not establish live tenant acceptance.
+The local checks should report 39 existing checks and 22 handoff checks,
+plus documentation/template checks. These confirm the files are ready;
+you still need to confirm your access and check the deployed results later.
 If an approval is missing, resolve it using
 [manual prerequisite instructions](./manual.md#step-04-confirm-azure-deployment-and-role-assignment-permissions).
