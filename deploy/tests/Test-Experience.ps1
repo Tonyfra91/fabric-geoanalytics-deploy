@@ -161,7 +161,7 @@ if ($MyInvocation.InvocationName -ne '.') {
             }
         }
         $ExpectedUrl = 'https://raw.githubusercontent.com/Tonyfra91/fabric-geoanalytics-deploy/v0.1.0/deploy/azuredeploy.json'
-        foreach ($Path in @('README.md','docs\getting-started.md')) {
+        foreach ($Path in @('README.md','02-deploy-azure\manual.md')) {
             $Content = Get-Content -LiteralPath (Join-Path $RepositoryRoot $Path) -Raw
             $Button = [regex]::Match($Content, 'https://portal\.azure\.com/#create/Microsoft\.Template/uri/([^)]+)')
             if (-not $Button.Success -or [uri]::UnescapeDataString($Button.Groups[1].Value) -cne $ExpectedUrl) {
@@ -185,7 +185,51 @@ if ($MyInvocation.InvocationName -ne '.') {
             $Fields -notmatch '(?m)^disable-model-invocation: false\r?$') {
             throw 'Fast Pass skill must remain discoverable and directly user-invocable.'
         }
-        $FastPass = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'docs\copilot-fast-pass.md') -Raw
+        $JourneyFolders = @('01-start-here','02-deploy-azure','03-finish-fabric','04-run-and-verify','05-next-steps')
+        $RootReadme = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'README.md') -Raw
+        $CopilotParts = @()
+        $ManualParts = @()
+        $CopilotCounts = @(8,1,3,4)
+        $ManualCounts = @(12,2,6,5)
+        foreach ($Index in 0..4) {
+            $Folder = $JourneyFolders[$Index]
+            $StageReadme = Get-Content -LiteralPath (Join-Path $RepositoryRoot "$Folder\README.md") -Raw
+            foreach ($Field in @('Where','Do','See','Next')) {
+                if ($StageReadme -notmatch "(?m)^### $Field\r?$") {
+                    throw "$Folder needs its $Field orientation section."
+                }
+            }
+            if (-not $RootReadme.Contains("](./$Folder/README.md)")) { throw "Root README must link to $Folder." }
+            if ($Index -lt 4) {
+                if (-not $StageReadme.Contains("](../$($JourneyFolders[$Index + 1])/README.md)")) {
+                    throw "$Folder must link to the next numbered stage."
+                }
+                foreach ($Route in @('copilot','manual')) {
+                    if (-not $StageReadme.Contains("](./$Route.md)")) { throw "$Folder needs its $Route route link." }
+                    $Part = Get-Content -LiteralPath (Join-Path $RepositoryRoot "$Folder\$Route.md") -Raw
+                    $Pattern = if ($Route -eq 'copilot') { '(?m)^## FP\d\d ' } else { '(?m)^### Step \d\d ' }
+                    $Expected = if ($Route -eq 'copilot') { $CopilotCounts[$Index] } else { $ManualCounts[$Index] }
+                    if ([regex]::Matches($Part, $Pattern).Count -ne $Expected) {
+                        throw "$Folder has the wrong number of $Route steps."
+                    }
+                    if (-not $Skill.Contains("../../../$Folder/$Route.md")) {
+                        throw "Copilot skill must reference $Folder/$Route.md."
+                    }
+                    if ($Index -lt 3) {
+                        $NextRoute = [regex]::Escape("../$($JourneyFolders[$Index + 1])/$Route.md#")
+                        if ($Part -notmatch "(?m)^(?:\| Next +\| |Next: ).*\]\($NextRoute") {
+                            throw "$Folder/$Route.md needs a Next link continuing the same route in the next folder."
+                        }
+                    }
+                    if ($Route -eq 'copilot') { $CopilotParts += $Part } else { $ManualParts += $Part }
+                }
+            }
+        }
+        if (-not $RootReadme.Contains('[Open 01 Start here](./01-start-here/README.md)') -or
+            $RootReadme -match '(?m)^## (Preferred quick start|CLI reminder)\r?$') {
+            throw 'Root README must have one numbered starting point, not competing quick starts.'
+        }
+        $FastPass = $CopilotParts -join "`n"
         $Steps = @([regex]::Matches($FastPass, '(?ms)^## FP(?<number>\d\d) [^\r\n]+\r?\n(?<body>.*?)(?=^## |\z)'))
         if ($Steps.Count -ne 16 -or
             (@($Steps | ForEach-Object { [int]$_.Groups['number'].Value }) -join ',') -ne ((1..16) -join ',')) {
@@ -201,7 +245,7 @@ if ($MyInvocation.InvocationName -ne '.') {
                 throw "FP$($Step.Groups['number'].Value) needs a linked next action."
             }
         }
-        $Manual = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'docs\getting-started.md') -Raw
+        $Manual = $ManualParts -join "`n"
         $ManualSteps = @([regex]::Matches($Manual, '(?ms)^### Step (?<number>\d\d) [^\r\n]+\r?\n(?<body>.*?)(?=^### Step |^## |\z)'))
         if ($ManualSteps.Count -ne 25 -or
             (@($ManualSteps | ForEach-Object { [int]$_.Groups['number'].Value }) -join ',') -ne ((1..25) -join ',')) {
@@ -211,8 +255,15 @@ if ($MyInvocation.InvocationName -ne '.') {
             $Body = $Step.Groups['body'].Value
             if ($Body -notmatch '(?m)^Where to be: \S[^\r\n]+' -or
                 $Body -notmatch '(?im)\bexpect(?:ed)?\b' -or
-                $Body -notmatch '(?m)^Next: .*?\[[^\]]+\]\(#[^)]+\)') {
+                $Body -notmatch '(?m)^Next: .*?\[[^\]]+\]\((?:#[^)]+|\.\.?/[^)]+)\)') {
                 throw "Manual Step $($Step.Groups['number'].Value) needs location, expected result and linked next action."
+            }
+        }
+        foreach ($Route in @(@{Path='docs\copilot-fast-pass.md'; Steps=$Steps}, @{Path='docs\getting-started.md'; Steps=$ManualSteps})) {
+            $Legacy = Get-Content -LiteralPath (Join-Path $RepositoryRoot $Route.Path) -Raw
+            foreach ($Step in $Route.Steps) {
+                $Heading = ($Step.Value -split '\r?\n',2)[0]
+                if (-not $Legacy.Contains($Heading)) { throw "Legacy guide lost its heading: $Heading" }
             }
         }
         $DiagramPath = Join-Path $RepositoryRoot 'docs\images\accelerator-journey.drawio'
@@ -220,18 +271,22 @@ if ($MyInvocation.InvocationName -ne '.') {
         $Diagram = [xml](Get-Content -LiteralPath $DiagramPath -Raw)
         $Svg = [xml](Get-Content -LiteralPath $SvgPath -Raw)
         $Cells = @($Diagram.mxfile.diagram.mxGraphModel.root.mxCell)
-        $Stages = @($Cells | Where-Object { $_.id -match '^stage-[1-6]$' -and $_.vertex -eq '1' })
+        $Stages = @($Cells | Where-Object { $_.id -match '^stage-[1-5]$' -and $_.vertex -eq '1' })
         $Edges = @($Cells | Where-Object { $_.edge -eq '1' })
-        if ($Stages.Count -ne 6 -or $Edges.Count -ne 5) { throw 'Overview must remain six stages with five connectors.' }
+        if ($Stages.Count -ne 5 -or $Edges.Count -ne 4) { throw 'Overview must remain five stages with four connectors.' }
         $SvgText = (@($Svg.SelectNodes("//*[local-name()='text']") | ForEach-Object { $_.InnerText }) -join ' ') -replace '\s+',' '
         foreach ($Stage in $Stages) {
+            $Index = [int]($Stage.id -replace '^stage-','') - 1
+            if (-not $Stage.value.Contains($JourneyFolders[$Index])) {
+                throw "Diagram stage $($Stage.id) must name its numbered folder."
+            }
             foreach ($Line in ($Stage.value -split '\r?\n')) {
                 if (-not $SvgText.Contains(($Line -replace '\s+',' '))) {
                     throw "SVG label differs from draw.io stage $($Stage.id): $Line"
                 }
             }
         }
-        foreach ($Index in 1..5) {
+        foreach ($Index in 1..4) {
             if (@($Edges | Where-Object { $_.source -eq "stage-$Index" -and $_.target -eq "stage-$($Index + 1)" }).Count -ne 1) {
                 throw "Draw.io overview must connect stage $Index to stage $($Index + 1)."
             }
@@ -254,7 +309,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($Svg.SelectNodes("//*[local-name()='script' or local-name()='foreignObject']").Count -gt 0) {
             throw 'Overview SVG must use portable, script-free SVG text, not HTML labels.'
         }
-        foreach ($Path in @('README.md','docs\copilot-fast-pass.md')) {
+        foreach ($Path in @('README.md','01-start-here\copilot.md')) {
             $Content = Get-Content -LiteralPath (Join-Path $RepositoryRoot $Path) -Raw
             if ($Content -notmatch '!\[[^\]]+\]\([^)]*accelerator-journey\.svg\)' -or $Content -match '```mermaid') {
                 throw "$Path must display the shared SVG overview rather than a tall Mermaid flowchart."
@@ -262,7 +317,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         }
         Write-Host 'PASS: Fast Pass skill discovery metadata, user invocation and 16 ordered guide steps.'
         Write-Host 'PASS: 16 Fast Pass checkpoint cards and 25 ordered, located manual steps with linked next actions.'
-        Write-Host 'PASS: Compact six-stage SVG, matching draw.io labels, ordered connectors and shared guide images.'
+        Write-Host 'PASS: Five root stage folders, route boundaries, Copilot references and legacy step headings.'
+        Write-Host 'PASS: Compact five-stage SVG, matching draw.io labels, numbered folder names and ordered connectors.'
         Write-Host 'PASS: Portal scope, handoff version, opt-in capacity, secret boundaries, documentation links, and release button URLs.'
         exit 0
     }

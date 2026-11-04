@@ -6,7 +6,9 @@ ms.date: 2026-10-30
 
 ## Status and architecture
 
-Start with the [Azure button and guided Fabric finish](../docs/getting-started.md).
+First-time users should begin at [01 Start here](../01-start-here/README.md).
+This folder contains deployment implementation and the operations reference,
+not the first stage of the reading journey.
 This reference also covers the alternative CLI-only deployment.
 Obtain the pinned upstream notebook locally with `.\Get-DemoNotebook.ps1` first.
 
@@ -149,7 +151,7 @@ If the Azure button already succeeded, initialize configuration and use:
 This verifies the subscription deployment, user, parameters, and vault outputs
 before finishing Fabric without submitting a new Azure create deployment.
 Do not confuse the portal record name with the `deploymentName` ownership value.
-See the [handoff guide](../docs/getting-started.md#3-initialize-the-local-handoff).
+See the [handoff guide](../03-finish-fabric/manual.md#initialize-the-local-handoff).
 
 For CLI-only Azure and Fabric provisioning, use:
 
@@ -260,14 +262,14 @@ No F2 throughput or headroom guarantee is made.
 
 The output tables use `<prefix>_<run_id>_<output>`:
 
-| Output                           | Actual notebook result                                  |
-|----------------------------------|---------------------------------------------------------|
-| `cells_daily`                    | Per-cell daily S/Z/R, population, vulnerability, status  |
-| `arrival`                        | First infested day and peak zombies per reached cell     |
-| `front_daily`                    | Daily footprint, hull, mean center, reach, and speed      |
-| `grid_population_vulnerability`  | H3 grid, interpolated population, vulnerability indices |
-| `origin`                         | Scenario name and origin coordinates                     |
-| `vulnerability_summary`          | Existing vulnerability-quintile analysis                 |
+| Output                             | Actual notebook result                                    |
+| ---------------------------------- | --------------------------------------------------------- |
+| `cells_daily`                      | Per-cell daily S/Z/R, population, vulnerability, status   |
+| `arrival`                          | First infested day and peak zombies per reached cell      |
+| `front_daily`                      | Daily footprint, hull, mean center, reach, and speed      |
+| `grid_population_vulnerability`    | H3 grid, interpolated population, vulnerability indices   |
+| `origin`                           | Scenario name and origin coordinates                      |
+| `vulnerability_summary`            | Existing vulnerability-quintile analysis                  |
 
 Geometry columns are converted to `*_wkt` strings with `geometry_srid=4326`.
 This avoids persisting Esri spatial user-defined types directly into Delta or
@@ -319,19 +321,19 @@ Never delete or change an existing customer capacity or unrelated
 workspaces. Vault purge protection retains deleted secrets
 according to the retention policy; do not promise immediate name reuse.
 
-| Symptom                    | Action                                                               |
-|----------------------------|----------------------------------------------------------------------|
-| Exit 2 from validate       | Obtain outstanding confirmations; do not bypass admin settings       |
-| Wrong tenant/subscription  | Use `az login --tenant` and `az account set`                           |
-| Fabric HTTP 401/403        | Verify delegated scopes, workspace access, and capacity rights        |
-| Vault HTTP 403             | Verify Secrets Officer RBAC propagation and network policy            |
-| Capacity invisible         | Use the Fabric capacity GUID and verify user access                   |
-| Ownership conflict         | Choose a new dedicated name; do not retag an unrelated resource        |
-| Environment publish fails | Inspect Fabric publication details, correct settings, then redeploy   |
-| Import fails               | Inspect notebook/item activity; the upstream source is unchanged      |
-| Runtime preflight fails   | Verify tenant enablement, entitlement, key validity, and user KV access|
-| Job succeeds but run fails | Inspect beta exit-value retrieval and output-contract verification    |
-| Upstream fingerprint fails| Review source/adapter compatibility before changing the pinned hash   |
+| Symptom                      | Action                                                                  |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| Exit 2 from validate         | Obtain outstanding confirmations; do not bypass admin settings          |
+| Wrong tenant/subscription    | Use `az login --tenant` and `az account set`                            |
+| Fabric HTTP 401/403          | Verify delegated scopes, workspace access, and capacity rights          |
+| Vault HTTP 403               | Verify Secrets Officer RBAC propagation and network policy              |
+| Capacity invisible           | Use the Fabric capacity GUID and verify user access                     |
+| Ownership conflict           | Choose a new dedicated name; do not retag an unrelated resource         |
+| Environment publish fails    | Inspect Fabric publication details, correct settings, then redeploy     |
+| Import fails                 | Inspect notebook/item activity; the upstream source is unchanged        |
+| Runtime preflight fails      | Verify tenant enablement, entitlement, key validity, and user KV access |
+| Job succeeds but run fails   | Inspect beta exit-value retrieval and output-contract verification      |
+| Upstream fingerprint fails   | Review source/adapter compatibility before changing the pinned hash     |
 
 ## Validation and remaining engineering work
 

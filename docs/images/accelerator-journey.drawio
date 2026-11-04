@@ -4,23 +4,20 @@
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
-        <mxCell id="stage-1" value="1. Prepare&#xa;You + Copilot: tools and access&#xa;FP01-08 / manual 01-12" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#eff6ff;strokeColor=#93c5fd;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+        <mxCell id="stage-1" value="01. Start here&#xa;Tools, access and route choice&#xa;01-start-here" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#eff6ff;strokeColor=#93c5fd;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
           <mxGeometry x="24" y="24" width="300" height="120" as="geometry"/>
         </mxCell>
-        <mxCell id="stage-2" value="2. Deploy Azure&#xa;You: press button, review, Create&#xa;FP09 / manual 13-14" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff7ed;strokeColor=#fdba74;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+        <mxCell id="stage-2" value="02. Deploy Azure&#xa;You: review parameters and Create&#xa;02-deploy-azure" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff7ed;strokeColor=#fdba74;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
           <mxGeometry x="370" y="24" width="300" height="120" as="geometry"/>
         </mxCell>
-        <mxCell id="stage-3" value="3. Finish Fabric&#xa;Copilot: after your approval&#xa;FP10-11 / manual 15-19" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#eff6ff;strokeColor=#93c5fd;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+        <mxCell id="stage-3" value="03. Finish Fabric&#xa;Approve setup; enter key yourself&#xa;03-finish-fabric" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#eff6ff;strokeColor=#93c5fd;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
           <mxGeometry x="716" y="24" width="300" height="120" as="geometry"/>
         </mxCell>
-        <mxCell id="stage-4" value="4. Store key&#xa;You: hidden terminal prompt&#xa;FP12 / manual 20" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff7ed;strokeColor=#fdba74;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
-          <mxGeometry x="24" y="216" width="300" height="120" as="geometry"/>
+        <mxCell id="stage-4" value="04. Run and verify&#xa;Approve runs; inspect tables/SQL&#xa;04-run-and-verify" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#eff6ff;strokeColor=#93c5fd;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="197" y="216" width="300" height="120" as="geometry"/>
         </mxCell>
-        <mxCell id="stage-5" value="5. Run model&#xa;Copilot: after your approval&#xa;FP13 / manual 21-22" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#eff6ff;strokeColor=#93c5fd;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
-          <mxGeometry x="370" y="216" width="300" height="120" as="geometry"/>
-        </mxCell>
-        <mxCell id="stage-6" value="6. Verify results&#xa;You + Copilot: tables and SQL&#xa;FP14, FP16 / manual 23-24" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#f0fdf4;strokeColor=#86efac;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
-          <mxGeometry x="716" y="216" width="300" height="120" as="geometry"/>
+        <mxCell id="stage-5" value="05. Next steps&#xa;Architecture and future experiments&#xa;05-next-steps" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#f0fdf4;strokeColor=#86efac;fontColor=#0f172a;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="543" y="216" width="300" height="120" as="geometry"/>
         </mxCell>
         <mxCell id="edge-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;endArrow=block;strokeColor=#334155;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage-1" target="stage-2">
           <mxGeometry relative="1" as="geometry"/>
@@ -30,16 +27,13 @@
         </mxCell>
         <mxCell id="edge-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;endArrow=block;strokeColor=#334155;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="stage-3" target="stage-4">
           <mxGeometry relative="1" as="geometry">
-            <Array as="points"><mxPoint x="866" y="180"/><mxPoint x="174" y="180"/></Array>
+            <Array as="points"><mxPoint x="866" y="180"/><mxPoint x="347" y="180"/></Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="edge-45" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;endArrow=block;strokeColor=#334155;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage-4" target="stage-5">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="edge-56" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;endArrow=block;strokeColor=#334155;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="stage-5" target="stage-6">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="note" value="Optional real-source test: verify first, then repeat Run + Verify (FP15 / manual 25)." style="text;html=0;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#334155;fontSize=16;" vertex="1" parent="1">
+        <mxCell id="note" value="Folders 01-04: deployment and verification. Folder 05: optional next experiments. Never skip approval checkpoints." style="text;html=0;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#334155;fontSize=16;" vertex="1" parent="1">
           <mxGeometry x="24" y="346" width="992" height="30" as="geometry"/>
         </mxCell>
       </root>

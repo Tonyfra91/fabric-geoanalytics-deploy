@@ -12,10 +12,22 @@ disable-model-invocation: false
 Run the repository's existing experience in a local VS Code Copilot Agent
 session. Prefer explicit invocation; discovery may also select it for a matching
 user request. Loading the skill is not unattended authorization.
-Use [the Fast Pass guide](../../../docs/copilot-fast-pass.md) for user-facing
-instructions and [the manual walkthrough](../../../docs/getting-started.md)
+Use [the Fast Pass guide](../../../01-start-here/copilot.md) for user-facing
+instructions and [the manual walkthrough](../../../01-start-here/manual.md)
 for exact screens, fields, prerequisites and expected results.
-Read the relevant linked sections before executing each stage.
+Read the relevant stage file before executing each stage. The first file
+contains preparation only; it is not the complete deployment guide.
+
+| Journey folder    | Copilot instructions                               | Manual screen reference                                            |
+| ----------------- | -------------------------------------------------- | ------------------------------------------------------------------ |
+| 01 Start here     | [FP01-FP08](../../../01-start-here/copilot.md)     | [Steps 01-12](../../../01-start-here/manual.md)                    |
+| 02 Deploy Azure   | [FP09](../../../02-deploy-azure/copilot.md)        | [Steps 13-14](../../../02-deploy-azure/manual.md)                  |
+| 03 Finish Fabric  | [FP10-FP12](../../../03-finish-fabric/copilot.md)  | [Steps 15-20](../../../03-finish-fabric/manual.md)                 |
+| 04 Run and verify | [FP13-FP16](../../../04-run-and-verify/copilot.md) | [Steps 21-25 and acceptance](../../../04-run-and-verify/manual.md) |
+
+Keep the whole repository open in VS Code and run commands at its root.
+The numbered folders organize instructions; do not change the terminal's
+working directory into one of them.
 
 Use these existing entry points, not replacement provisioning logic:
 
@@ -66,7 +78,8 @@ ArcGIS publication, semantic models, or production certification.
 
 ## Phase 1 Prepare without cloud writes
 
-1. Confirm the workspace root contains `deploy.ps1`, the initializer and docs.
+1. Confirm the workspace root contains `deploy.ps1`, the initializer and the
+   numbered journey folders.
    Inspect Git status, existing configuration and manifest presence. Do not
    open an unrelated root or reset changes. Use PowerShell 7 on Windows.
 2. Check PowerShell, Git, Azure CLI, Bicep 0.48.1 and Python. Missing tools
