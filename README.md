@@ -10,8 +10,9 @@ ms.date: 2026-11-04
 
 The zombies were the demo. Location intelligence is the opportunity.
 
-The [zombie outbreak demo](https://github.com/SeanKMcG/fabric_zombie_outbreak)
-made a spatial pattern memorable: combine location and population data,
+The [zombie outbreak demo](https://github.com/SeanKMcG/fabric_zombie_outbreak),
+created by Esri's Sean McGinnis, made a spatial pattern memorable:
+combine location and population data,
 analyze relationships, simulate change, and inspect results. The post-zombie
 story takes that pattern beyond the fictional scenario, toward questions
 about service coverage, infrastructure exposure, and community resilience.
