@@ -23,6 +23,146 @@ if ($MyInvocation.InvocationName -ne '.') {
     try {
         $Module = Import-Module (Join-Path $RepositoryRoot 'deploy\scripts\Accelerator.psm1') -Force -PassThru
         & $Module {
+            $script:HttpCount = 0
+            function Assert-Check([string]$Name, [bool]$Condition) {
+                if (-not $Condition) { throw "FAIL: $Name" }
+                $script:HttpCount++
+                Write-Host "PASS: $Name"
+            }
+            function Assert-Fails([string]$Name, [scriptblock]$Action, [string]$Pattern) {
+                $Failure = $null
+                try { & $Action | Out-Null } catch { $Failure = $_.Exception.Message }
+                Assert-Check $Name ([bool]($Failure -and $Failure -match $Pattern))
+            }
+            $script:HttpCalls = [System.Collections.Generic.List[string]]::new()
+            $script:CredentialCalls = 0
+            $script:WorkspaceReads = 0
+            $script:HttpScenario = 'success'
+            function script:Invoke-AzJson {
+                param([string[]]$Arguments)
+                if (($Arguments -join ' ') -ne 'account get-access-token --resource https://api.fabric.microsoft.com') {
+                    throw 'Unexpected CLI call in offline HTTP checks.'
+                }
+                $script:CredentialCalls++
+                return @{accessToken='offline-test-token'}
+            }
+            function script:Invoke-WebRequest {
+                param([string]$Uri, [string]$Method, [hashtable]$Headers, [switch]$SkipHttpErrorCheck, [int]$TimeoutSec)
+                $script:HttpCalls.Add("$Method $Uri")
+                if ($Method -ne 'GET') { throw 'Offline HTTP checks only expect GET requests.' }
+                if ($Uri -eq 'https://api.fabric.microsoft.com/v1/workspaces/offline') {
+                    $script:WorkspaceReads++
+                    $CapacityId = switch ($script:HttpScenario) {
+                        'capacity-pending' { if ($script:WorkspaceReads -ge 2) { 'capacity' } }
+                        'capacity-wrong' { 'other-capacity' }
+                        default { $null }
+                    }
+                    $Data = @{id='offline';capacityId=$CapacityId}
+                    if ($script:HttpScenario -eq 'capacity-invalid') { $Data.id = 'different-workspace' }
+                } elseif ($Uri -in @('https://api.fabric.microsoft.com/v1/operations/offline/result','https://api.fabric.microsoft.com/v1/operations/66666666-6666-4666-8666-666666666666/result')) {
+                    $Data = @{id='created-item'}
+                } elseif ($Uri -in @('https://api.fabric.microsoft.com/v1/operations/offline','https://api.fabric.microsoft.com/v1/operations/66666666-6666-4666-8666-666666666666')) {
+                    $State = switch ($script:HttpScenario) {
+                        'failed' { 'Failed' }
+                        'cancelled' { 'Cancelled' }
+                        'unknown' { 'Unexpected' }
+                        default { 'Succeeded' }
+                    }
+                    $Data = @{status=$State}
+                } else {
+                    throw 'Unexpected URL in offline HTTP checks.'
+                }
+                return @{StatusCode=200;Headers=@{};Content=($Data | ConvertTo-Json -Compress)}
+            }
+            function script:Start-Sleep { param([int]$Seconds) }
+            foreach ($Location in @('https://api.fabric.microsoft.com/v1/operations/offline','/v1/operations/offline')) {
+                $Result = Wait-FabricOperation @{StatusCode=202;Headers=@{Location=$Location;'Retry-After'='0'}}
+                Assert-Check "Operation completes with Location $Location" ($Result.id -eq 'created-item')
+            }
+            Assert-Check 'Operation polling and result reads use the trusted Fabric origin' (
+                @($script:HttpCalls | Where-Object { $_ -notmatch '^GET https://api\.fabric\.microsoft\.com/v1/operations/offline(/result)?$' }).Count -eq 0)
+            $CanonicalUri = 'https://api.fabric.microsoft.com/v1/operations/66666666-6666-4666-8666-666666666666'
+            $script:HttpCalls.Clear()
+            $Result = Wait-FabricOperation @{StatusCode=202;Headers=@{
+                Location='https://wabi-us-central-b-primary-redirect.analysis.windows.net/offline-operation'
+                'x-ms-operation-id'='66666666-6666-4666-8666-666666666666';'Retry-After'='0'
+            }}
+            Assert-Check 'Regional Location is ignored in favor of a validated operation ID on the trusted origin' (
+                $Result.id -eq 'created-item' -and $script:HttpCalls.Count -eq 2 -and
+                $script:HttpCalls[0] -eq "GET $CanonicalUri" -and $script:HttpCalls[1] -eq "GET $CanonicalUri/result")
+            $Result = Wait-FabricOperation @{StatusCode=202;Headers=@{'x-ms-operation-id'='66666666-6666-4666-8666-666666666666';'Retry-After'='0'}}
+            Assert-Check 'Operation ID works without a Location header' ($Result.id -eq 'created-item')
+            $script:HttpCalls.Clear()
+            $Result = Wait-FabricOperation -NoResult -Response @{StatusCode=202;Headers=@{
+                'x-ms-operation-id'='66666666-6666-4666-8666-666666666666';'Retry-After'='0'
+            }}
+            Assert-Check 'Resultless operations verify success without requesting a result endpoint' (
+                $null -eq $Result -and $script:HttpCalls.Count -eq 1 -and $script:HttpCalls[0] -eq "GET $CanonicalUri")
+            foreach ($OperationId in @('invalid-operation-id','00000000-0000-0000-0000-000000000000')) {
+                Assert-Fails 'Invalid operation IDs are rejected without falling back to Location' {
+                    Wait-FabricOperation @{StatusCode=202;Headers=@{'x-ms-operation-id'=$OperationId;Location='/v1/operations/offline'}}
+                } 'invalid x-ms-operation-id'
+            }
+            Assert-Check 'Non-asynchronous result is returned unchanged' (
+                (Wait-FabricOperation @{StatusCode=201;Data=@{id='synchronous'}}).id -eq 'synchronous')
+            Assert-Fails 'Missing operation Location fails without resubmitting' {
+                Wait-FabricOperation @{StatusCode=202;Headers=@{}}
+            } 'did not return Location'
+            foreach ($State in @('failed','cancelled','unknown')) {
+                $script:HttpScenario = $State
+                Assert-Fails "Operation $State fails explicitly" {
+                    Wait-FabricOperation @{StatusCode=202;Headers=@{Location='/v1/operations/offline';'Retry-After'='0'}}
+                } 'Failed|Cancelled|Unexpected'
+            }
+            Assert-Fails 'Operation timeout warns that the operation may still be running' {
+                Wait-FabricOperation -Response @{StatusCode=202;Headers=@{Location='/v1/operations/offline'}} -TimeoutSeconds 0
+            } 'may still be running'
+            $BeforeCredentials = $script:CredentialCalls
+            $BeforeRequests = $script:HttpCalls.Count
+            foreach ($Location in @(
+                'https://unexpected.example/v1/operations/offline',
+                '//unexpected.example/v1/operations/offline',
+                'http://api.fabric.microsoft.com/v1/operations/offline',
+                'https://user:private-marker@api.fabric.microsoft.com/v1/operations/offline',
+                'https://api.fabric.microsoft.com:8443/v1/operations/offline',
+                'https://api.fabric.microsoft.com/v1/operations/offline#fragment'
+            )) {
+                Assert-Fails 'Unsafe operation Location is rejected before credential acquisition' {
+                    Wait-FabricOperation @{StatusCode=202;Headers=@{Location=$Location}}
+                } 'Refusing'
+            }
+            Assert-Fails 'Service URL guard still rejects an unexpected host' {
+                Invoke-ServiceRequest -Uri 'https://unexpected.example/private-path?private-query'
+            } 'method=GET, scheme=https, host=unexpected.example'
+            $Diagnostic = $null
+            try {
+                Resolve-FabricOperationUri 'https://user:private-marker@unexpected.example/private-path?private-query'
+            } catch { $Diagnostic = $_.Exception.Message }
+            Assert-Check 'URL rejection diagnostics omit credentials, path, and query' (
+                $Diagnostic -match 'host=unexpected.example' -and $Diagnostic -notmatch 'private-marker|private-path|private-query')
+            Assert-Check 'Unsafe URLs acquired no credentials and issued no HTTP requests' (
+                $script:CredentialCalls -eq $BeforeCredentials -and $script:HttpCalls.Count -eq $BeforeRequests)
+            $script:HttpScenario = 'capacity-pending'
+            $script:WorkspaceReads = 0
+            $Workspace = Wait-WorkspaceCapacity -WorkspaceId 'offline' -CapacityId 'capacity'
+            Assert-Check 'Capacity assignment polls workspace metadata until the requested capacity is visible' (
+                $Workspace.capacityId -eq 'capacity' -and $script:WorkspaceReads -eq 2)
+            $script:HttpScenario = 'capacity-wrong'
+            Assert-Fails 'Capacity polling refuses another capacity' {
+                Wait-WorkspaceCapacity -WorkspaceId 'offline' -CapacityId 'capacity'
+            } 'different capacity'
+            $script:HttpScenario = 'capacity-invalid'
+            Assert-Fails 'Capacity polling rejects unrelated workspace metadata' {
+                Wait-WorkspaceCapacity -WorkspaceId 'offline' -CapacityId 'capacity'
+            } 'unexpected workspace metadata'
+            $script:HttpScenario = 'capacity-timeout'
+            Assert-Fails 'Capacity assignment timeout does not report success or resubmit' {
+                Wait-WorkspaceCapacity -WorkspaceId 'offline' -CapacityId 'capacity' -TimeoutSeconds 0
+            } 'timed out.*may still be running'
+            Write-Host "HTTP compatibility checks passed: $script:HttpCount"
+        }
+        $Module = Import-Module (Join-Path $RepositoryRoot 'deploy\scripts\Accelerator.psm1') -Force -PassThru
+        & $Module {
             $script:CheckCount = 0
             function Assert-Check([string]$Name, [bool]$Condition) {
                 if (-not $Condition) { throw "FAIL: $Name" }
@@ -178,11 +318,26 @@ print("Delta output contract, read-back counts, and overwrite guard passed (mock
                     }
                     return @{Data=@{value=$Secrets}}
                 }
-                if ($Uri -like '*/items' -and $Method -eq 'GET') { return @{Data=@{value=@()}} }
+                if ($Uri -like '*/items' -and $Method -eq 'GET') {
+                    $Lakehouse = @{id='lakehouse';displayName='Offline Lakehouse';type='Lakehouse';description='offline-owner'}
+                    $Endpoint = @{id='endpoint';displayName='Offline Lakehouse';type='SQLEndpoint';description=''}
+                    $Items = @(switch ($script:Scenario) {
+                        'items-pair' { $Lakehouse; $Endpoint }
+                        'items-unowned' { $Lakehouse.description = 'someone-else'; $Lakehouse; $Endpoint }
+                        'items-duplicate' { $Lakehouse; @{id='duplicate';displayName=$Lakehouse.displayName;type='Lakehouse';description='offline-owner'}; $Endpoint }
+                        'items-endpoint-only' { $Endpoint }
+                        'items-wrong-type' { @{id='environment';displayName=$Lakehouse.displayName;type='Environment';description='offline-owner'} }
+                        'items-unrelated-conflict' { $Lakehouse; @{id='notebook';displayName=$Lakehouse.displayName;type='Notebook';description='offline-owner'}; $Endpoint }
+                    })
+                    return @{Data=@{value=$Items}}
+                }
                 if ($script:Scenario -eq 'import-failure') { throw 'Notebook import failed' }
                 if ($script:Scenario -eq 'job-failure') { return @{StatusCode=200;Headers=@{};Data=@{status='Failed';id='job'}} }
                 if ($script:Scenario -in @('job-run-failure','job-complete')) {
-                    if ($Method -eq 'POST') { return @{StatusCode=202;Headers=@{Location='https://api.fabric.microsoft.com/v1/jobs/offline'}} }
+                    if ($Method -eq 'POST') {
+                        $Location = if ($script:Scenario -eq 'job-complete') { '/v1/jobs/offline' } else { 'https://api.fabric.microsoft.com/v1/jobs/offline' }
+                        return @{StatusCode=202;Headers=@{Location=$Location}}
+                    }
                     if ($Uri -like '*beta=true') { return @{Data=@{properties=@{exitValue='{"run_id":"offline","outputs":{}}'}}} }
                     return @{StatusCode=200;Headers=@{};Data=@{status=$(if ($script:Scenario -eq 'job-complete') {'Completed'} else {'Failed'});id='offline'}}
                 }
@@ -211,6 +366,24 @@ print("Delta output contract, read-back counts, and overwrite guard passed (mock
             Assert-Fails 'Failed asynchronous publication propagates' {
                 Wait-FabricOperation @{StatusCode=202;Headers=@{Location='https://api.fabric.microsoft.com/v1/operations/offline'}}
             } 'Failed'
+            $BeforeItemChecks = $script:Methods.Count
+            $script:Scenario = 'items-pair'
+            $Item = Get-OrCreateFabricItem -WorkspaceId 'w' -Name 'Offline Lakehouse' -Type Lakehouse -Owner 'offline-owner'
+            Assert-Check 'Owned Lakehouse is reused alongside its same-named SQL endpoint' ($Item.id -eq 'lakehouse' -and $Item.created -eq $false)
+            foreach ($Case in @(
+                @{Scenario='items-unowned';Pattern='Incompatible or unowned';Name='Unowned Lakehouse is not adopted beside its SQL endpoint'},
+                @{Scenario='items-duplicate';Pattern='Ambiguous';Name='Duplicate Lakehouses remain ambiguous beside a SQL endpoint'},
+                @{Scenario='items-endpoint-only';Pattern='Incompatible or unowned';Name='SQL endpoint alone is not adopted as a Lakehouse'},
+                @{Scenario='items-wrong-type';Pattern='Incompatible or unowned';Name='Another item type is not adopted as a Lakehouse'},
+                @{Scenario='items-unrelated-conflict';Pattern='Ambiguous';Name='Non-endpoint name conflicts remain ambiguous'}
+            )) {
+                $script:Scenario = $Case.Scenario
+                Assert-Fails $Case.Name {
+                    Get-OrCreateFabricItem -WorkspaceId 'w' -Name 'Offline Lakehouse' -Type Lakehouse -Owner 'offline-owner'
+                } $Case.Pattern
+            }
+            Assert-Check 'Lakehouse resume checks issue only item metadata GETs' (
+                @($script:Methods | Select-Object -Skip $BeforeItemChecks | Where-Object { $_ -ne 'GET https://api.fabric.microsoft.com/v1/workspaces/w/items' }).Count -eq 0)
             $script:Scenario = 'import-failure'
             Assert-Fails 'Notebook import failure propagates' {
                 Get-OrCreateFabricItem -WorkspaceId 'w' -Name 'n' -Type Notebook -Owner 'owner' -Definition @{format='ipynb'}
@@ -225,8 +398,10 @@ print("Delta output contract, read-back counts, and overwrite guard passed (mock
                 Invoke-NotebookJob -Manifest @{workspaceId='w';notebookId='n'} -Parameters @(@{name='SIM_DAYS';value=2;type='Integer'})
             } 'Notebook job Failed'
             $script:Scenario = 'job-complete'
-            $Completed = Invoke-NotebookJob -Manifest @{workspaceId='w';notebookId='n'} -Parameters @(@{name='SIM_DAYS';value=2;type='Integer'})
-            Assert-Check 'Completed notebook job exit value is captured' ($Completed.run_id -eq 'offline')
+            $JobManifest = @{workspaceId='w';notebookId='n'}
+            $Completed = Invoke-NotebookJob -Manifest $JobManifest -Parameters @(@{name='SIM_DAYS';value=2;type='Integer'})
+            Assert-Check 'Completed notebook job exit value and normalized polling URL are captured' (
+                $Completed.run_id -eq 'offline' -and $JobManifest.lastJobUri -eq 'https://api.fabric.microsoft.com/v1/jobs/offline')
             $Schema = Join-Path $script:Root 'deploy\fabric\deployment-manifest.schema.json'
             $Manifest = @{
                 deploymentName='offline';deploymentVersion='0.1.0';subscriptionId=$script:Fixture.subscriptionId

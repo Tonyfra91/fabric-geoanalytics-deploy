@@ -70,6 +70,21 @@ if ($MyInvocation.InvocationName -ne '.') {
             Assert-Check 'Portal parameters mapped, record name not confused with ownership name' ($Config.deploymentName -eq 'geo-demo')
             Assert-Check 'All five confirmations remain false' (@($Config.confirmations.Values | Where-Object { $_ -eq $false }).Count -eq 5)
             Assert-Check 'Names are generated safely' ($Config.lakehouseName -eq 'Geo_geo_demo')
+            $ConfigPath = Join-Path ([IO.Path]::GetTempPath()) "geo-config-$([guid]::NewGuid().ToString('N')).json"
+            try {
+                $Config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $ConfigPath -Encoding utf8
+                $Validated = Read-CustomerConfig -Path $ConfigPath
+                Assert-Check 'Generated configuration passes the real configuration reader' ($Validated.environmentName -eq 'geo-demo Runtime 1-3')
+                $Sample = Get-Content -LiteralPath (Join-Path $script:Root 'deploy\config\customer.sample.json') -Raw | ConvertFrom-Json -AsHashtable
+                $Sample.subscriptionId = $script:Account.id
+                $Sample.tenantId = $script:Account.tenantId
+                $Sample.capacity.id = $script:CapacityId
+                $Sample | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $ConfigPath -Encoding utf8
+                $Validated = Read-CustomerConfig -Path $ConfigPath
+                Assert-Check 'Sample configuration passes the real reader after supplying GUIDs' ($Validated.environmentName -eq 'GeoAnalytics Runtime 1-3')
+            } finally {
+                if (Test-Path -LiteralPath $ConfigPath) { Remove-Item -LiteralPath $ConfigPath }
+            }
             $null = Get-VerifiedAzureDeployment -Config $Config -DeploymentName 'portal-record'
             Assert-Check 'Successful matching Azure handoff accepted' $true
             Assert-Fails 'Missing existing capacity rejected' { New-PortalCustomerConfig -AzureDeploymentName 'portal-record' } 'ExistingCapacityId'
@@ -110,26 +125,129 @@ if ($MyInvocation.InvocationName -ne '.') {
             function script:Test-Prerequisite { param([hashtable]$Config) return @([pscustomobject]@{Status='Pass'}) }
             function script:Save-DeploymentManifest { param([hashtable]$Manifest) $script:SavedManifest = $Manifest }
             function script:Read-DeploymentManifest { param([hashtable]$Config) throw 'Offline test must not reuse a manifest.' }
+            $script:WorkspaceCapacityId = $script:CapacityId
+            $script:FabricCalls = [System.Collections.Generic.List[string]]::new()
             function script:Get-ServiceCollection {
                 param([string]$Uri)
                 if ($Uri -eq 'https://api.fabric.microsoft.com/v1/workspaces') {
-                    return @(@{id='workspace';displayName='geo-demo GeoAnalytics';description='fabric-zombie-outbreak:geo-demo';capacityId=$script:CapacityId})
+                    return @(@{id='workspace';displayName='geo-demo GeoAnalytics';description='fabric-zombie-outbreak:geo-demo';capacityId=$script:WorkspaceCapacityId})
                 }
                 if ($Uri -match '/roleAssignments$') { return @(@{principal=@{id=$script:UserId};role='Admin'}) }
                 throw "Unexpected service read: $Uri"
             }
-            function script:Invoke-ServiceRequest { throw 'No HTTP mutation is expected before the offline stop.' }
-            function script:Get-OrCreateFabricItem { throw 'Offline stop at first Fabric item.' }
+            function script:Invoke-ServiceRequest {
+                param([string]$Uri, [string]$Method = 'GET', [object]$Body)
+                $script:FabricCalls.Add("$Method $Uri")
+                if ($Uri -eq 'https://api.fabric.microsoft.com/v1/workspaces/workspace/assignToCapacity' -and $Method -eq 'POST') {
+                    if ($Body.capacityId -ne $script:CapacityId) { throw 'Unexpected capacity assignment target.' }
+                    return @{StatusCode=202;Headers=@{}}
+                }
+                if ($Uri -eq 'https://api.fabric.microsoft.com/v1/workspaces/workspace' -and $Method -eq 'GET') {
+                    return @{StatusCode=200;Data=@{id='workspace';capacityId=$script:CapacityId}}
+                }
+                throw 'Unexpected HTTP call before the offline stop.'
+            }
+            function script:Get-OrCreateFabricItem { $script:ItemAttempted=$true; throw 'Offline stop at first Fabric item.' }
+            function script:Initialize-KeyVaultManagedPrivateEndpoint {
+                param([hashtable]$Manifest)
+                if ($script:PendingNetwork) { throw 'Azure approval Pending offline checkpoint.' }
+                return @{provisioningState='Succeeded';approvalState='Approved'}
+            }
             $script:StateDirectory = Join-Path ([IO.Path]::GetTempPath()) "geo-handoff-$([guid]::NewGuid().ToString('N'))"
             try {
                 Assert-Fails 'Portal handoff reaches Fabric without deploying Azure again' { Invoke-Deployment -Config $Config -AzureDeploymentName 'portal-record' } 'Offline stop'
+                Assert-Check 'Already assigned workspace does not resubmit capacity assignment' ($script:FabricCalls.Count -eq 0)
+                $script:WorkspaceCapacityId = $null
+                Assert-Fails 'Capacity assignment 202 without Location reaches the first Fabric item' {
+                    Invoke-Deployment -Config $Config -AzureDeploymentName 'portal-record'
+                } 'Offline stop'
+                Assert-Check 'Capacity assignment is submitted once and verified by a workspace GET' (
+                    $script:FabricCalls.Count -eq 2 -and
+                    $script:FabricCalls[0] -eq 'POST https://api.fabric.microsoft.com/v1/workspaces/workspace/assignToCapacity' -and
+                    $script:FabricCalls[1] -eq 'GET https://api.fabric.microsoft.com/v1/workspaces/workspace')
                 Assert-Check 'No Azure create or what-if command issued' (@($script:Calls | Where-Object { $_ -match '^deployment sub (create|what-if)' }).Count -eq 0)
                 Assert-Check 'Azure stage persisted with verified outputs' ($script:SavedManifest.keyVaultUri -eq 'https://kv-geo-demo.vault.azure.net/')
                 Assert-Fails 'WhatIf cannot silently start Fabric handoff' { Invoke-Deployment $Config -WhatIf -AzureDeploymentName 'portal-record' } 'cannot be combined'
+
+                $script:WorkspaceCapacityId = $script:CapacityId
+                $script:FabricCalls.Clear()
+                $script:ItemAttempted=$false
+                $script:PendingNetwork=$true
+                Assert-Fails 'Pending endpoint approval stops Fabric finish before item mutation' {
+                    Invoke-Deployment -Config $Config -AzureDeploymentName 'portal-record'
+                } 'Azure approval Pending'
+                Assert-Check 'Pending approval neither imports nor republishes existing assets' (
+                    -not $script:ItemAttempted -and $script:FabricCalls.Count -eq 0)
+                $script:PendingNetwork=$false
+                $script:PublishScenario = 'success'
+                $script:EnvironmentReads = 0
+                $script:FabricCalls.Clear()
+                function script:Get-OrCreateFabricItem {
+                    param([string]$WorkspaceId, [string]$Name, [string]$Type, [string]$Owner, [hashtable]$Definition)
+                    $script:FabricCalls.Add("ITEM $Type")
+                    return @{id="$Type-id";created=$false}
+                }
+                function script:New-DeployableNotebook { return @{cells=@();metadata=@{}} }
+                function script:Get-DeploymentStatus { param([hashtable]$Config) return @{stage=$script:SavedManifest.stage;managedPrivateEndpointReady=$true} }
+                function script:Start-Sleep { param([int]$Seconds) }
+                function script:Invoke-ServiceRequest {
+                    param([string]$Uri, [string]$Method = 'GET', [object]$Body)
+                    $script:FabricCalls.Add("$Method $Uri")
+                    $EnvironmentBase = 'https://api.fabric.microsoft.com/v1/workspaces/workspace/environments/Environment-id'
+                    if ($Uri -eq "$EnvironmentBase/staging/sparkcompute?beta=false" -and $Method -eq 'PATCH') {
+                        return @{StatusCode=200;Data=@{}}
+                    }
+                    if ($Uri -eq "$EnvironmentBase/staging/publish?beta=false" -and $Method -eq 'POST') {
+                        return @{StatusCode=202;Headers=@{Location='https://wabi-us-central-b-primary-redirect.analysis.windows.net/offline-operation'}}
+                    }
+                    if ($Uri -eq $EnvironmentBase -and $Method -eq 'GET') {
+                        $script:EnvironmentReads++
+                        $State = if ($script:EnvironmentReads -eq 1) { 'Success' } elseif ($script:PublishScenario -eq 'failed') {
+                            'Failed'
+                        } elseif ($script:EnvironmentReads -eq 2) { 'Running' } else { 'Success' }
+                        return @{StatusCode=200;Data=@{properties=@{publishDetails=@{state=$State}}}}
+                    }
+                    if ($Uri -eq "$EnvironmentBase/sparkcompute?beta=false" -and $Method -eq 'GET') {
+                        return @{StatusCode=200;Data=@{runtimeVersion='1.3';sparkProperties=@(@{key='spark.native.enabled';value='false'})}}
+                    }
+                    if ($Uri -eq 'https://api.fabric.microsoft.com/v1/workspaces/workspace/items/Notebook-id/updateDefinition' -and $Method -eq 'POST') {
+                        if (-not $Body.definition.parts -or $Body.parts) { throw 'Notebook update must wrap the definition in the documented request body.' }
+                        return @{StatusCode=202;Headers=@{
+                            Location='https://wabi-us-central-b-primary-redirect.analysis.windows.net/offline-update'
+                            'x-ms-operation-id'='66666666-6666-4666-8666-666666666666';'Retry-After'='0'
+                        }}
+                    }
+                    if ($Uri -eq 'https://api.fabric.microsoft.com/v1/operations/66666666-6666-4666-8666-666666666666' -and $Method -eq 'GET') {
+                        return @{StatusCode=200;Headers=@{};Data=@{status='Succeeded'}}
+                    }
+                    throw 'Unexpected HTTP call in offline Environment publication checks.'
+                }
+                Invoke-Deployment -Config $Config -AzureDeploymentName 'portal-record'
+                Assert-Check 'Regional publication Location does not block a verified Fabric finish' (
+                    $script:SavedManifest.stage -eq 'Configured' -and $script:SavedManifest.notebookId -eq 'Notebook-id')
+                Assert-Check 'Environment publication never follows the regional Location' (
+                    @($script:FabricCalls | Where-Object { $_ -match 'analysis.windows.net' }).Count -eq 0)
+                Assert-Check 'Notebook resume update uses the canonical resultless operation contract' (
+                    $script:FabricCalls.Contains('POST https://api.fabric.microsoft.com/v1/workspaces/workspace/items/Notebook-id/updateDefinition') -and
+                    $script:FabricCalls.Contains('GET https://api.fabric.microsoft.com/v1/operations/66666666-6666-4666-8666-666666666666') -and
+                    -not $script:FabricCalls.Contains('GET https://api.fabric.microsoft.com/v1/operations/66666666-6666-4666-8666-666666666666/result'))
+                $EnvironmentGet = 'GET https://api.fabric.microsoft.com/v1/workspaces/workspace/environments/Environment-id'
+                Assert-Check 'Notebook import waits for trusted Environment polling to report Success' (
+                    $script:EnvironmentReads -eq 3 -and
+                    $script:FabricCalls.IndexOf('ITEM Notebook') -gt $script:FabricCalls.LastIndexOf($EnvironmentGet))
+                $script:PublishScenario = 'failed'
+                $script:EnvironmentReads = 0
+                $script:FabricCalls.Clear()
+                Assert-Fails 'Failed Environment publication blocks Fabric finish despite accepted submission' {
+                    Invoke-Deployment -Config $Config -AzureDeploymentName 'portal-record'
+                } 'publication did not succeed: Failed'
+                Assert-Check 'Failed Environment publication never imports a Notebook' (-not $script:FabricCalls.Contains('ITEM Notebook'))
             }
             finally {
                 $ParameterPath = Join-Path $script:StateDirectory 'geo-demo.parameters.json'
                 if (Test-Path -LiteralPath $ParameterPath) { Remove-Item -LiteralPath $ParameterPath }
+                $NotebookPath = Join-Path $script:StateDirectory 'Zombie_Outbreak_Deployable.ipynb'
+                if (Test-Path -LiteralPath $NotebookPath) { Remove-Item -LiteralPath $NotebookPath }
                 if (Test-Path -LiteralPath $script:StateDirectory) { Remove-Item -LiteralPath $script:StateDirectory }
             }
             Write-Host "Experience checks passed: $script:Count"
@@ -141,6 +259,57 @@ if ($MyInvocation.InvocationName -ne '.') {
         if (@($Template.parameters.Keys | Where-Object { $_ -match 'secret|password|token|apiKey' }).Count) {
             throw 'Portal template must not accept workload secrets.'
         }
+        $Foundations = @($Template.resources.Values | Where-Object { $_.properties.template.outputs.privateEndpointId })
+        if ($Foundations.Count -ne 1) { throw 'Portal template must contain one private Key Vault foundation.' }
+        $Foundation = $Foundations[0].properties.template
+        $Vaults = @($Foundation.resources | Where-Object type -eq 'Microsoft.KeyVault/vaults')
+        if ($Vaults.Count -ne 1 -or $Vaults[0].properties.publicNetworkAccess -ne 'Disabled' -or
+            $Vaults[0].properties.networkAcls.defaultAction -ne 'Deny' -or
+            $Vaults[0].properties.networkAcls.bypass -ne 'None' -or
+            $Vaults[0].properties.enableRbacAuthorization -ne $true) {
+            throw 'Key Vault must retain RBAC and disable public access without a firewall bypass.'
+        }
+        $Networks = @($Foundation.resources | Where-Object type -eq 'Microsoft.Network/virtualNetworks')
+        if ($Networks.Count -ne 1 -or $Networks[0].name -ne "[parameters('virtualNetworkName')]" -or
+            $Networks[0].properties.addressSpace.addressPrefixes[0] -ne "[parameters('virtualNetworkAddressPrefix')]" -or
+            $Networks[0].properties.subnets.Count -ne 1 -or
+            $Networks[0].properties.subnets[0].name -ne "[parameters('privateEndpointSubnetName')]" -or
+            $Networks[0].properties.subnets[0].properties.addressPrefix -ne "[parameters('privateEndpointSubnetPrefix')]" -or
+            $Networks[0].properties.subnets[0].properties.privateEndpointNetworkPolicies -ne 'Disabled') {
+            throw 'Private endpoint network and dedicated subnet must use customer parameters.'
+        }
+        $Endpoints = @($Foundation.resources | Where-Object type -eq 'Microsoft.Network/privateEndpoints')
+        if ($Endpoints.Count -ne 1 -or $Endpoints[0].name -ne "[parameters('privateEndpointName')]" -or
+            $Endpoints[0].properties.customNetworkInterfaceName -ne "[parameters('privateEndpointNetworkInterfaceName')]" -or
+            $Endpoints[0].properties.ContainsKey('ipConfigurations') -or
+            $Endpoints[0].properties.subnet.id -ne "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName')), parameters('privateEndpointSubnetName'))]" -or
+            $Endpoints[0].properties.privateLinkServiceConnections.Count -ne 1 -or
+            $Endpoints[0].properties.privateLinkServiceConnections[0].properties.groupIds[0] -ne 'vault' -or
+            $Endpoints[0].properties.privateLinkServiceConnections[0].properties.privateLinkServiceId -notmatch "resourceId\('Microsoft.KeyVault/vaults', parameters\('name'\)\)") {
+            throw 'Private endpoint must target the deployed vault with a dynamically allocated IP and parameterized NIC.'
+        }
+        $Zones = @($Foundation.resources | Where-Object type -eq 'Microsoft.Network/privateDnsZones')
+        $Links = @($Foundation.resources | Where-Object type -eq 'Microsoft.Network/privateDnsZones/virtualNetworkLinks')
+        $ZoneGroups = @($Foundation.resources | Where-Object type -eq 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups')
+        if ($Zones.Count -ne 1 -or $Zones[0].name -ne 'privatelink.vaultcore.azure.net' -or
+            $Links.Count -ne 1 -or $Links[0].properties.registrationEnabled -ne $false -or
+            $Links[0].properties.virtualNetwork.id -notmatch "resourceId\('Microsoft.Network/virtualNetworks', parameters\('virtualNetworkName'\)\)" -or
+            $ZoneGroups.Count -ne 1 -or $ZoneGroups[0].properties.privateDnsZoneConfigs.Count -ne 1 -or
+            $ZoneGroups[0].properties.privateDnsZoneConfigs[0].properties.privateDnsZoneId -notmatch 'privatelink.vaultcore.azure.net') {
+            throw 'Private DNS zone, VNet link, and endpoint zone group must be wired to the deployed resources.'
+        }
+        if (@($Foundation.resources | Where-Object { $_.type -in @('Microsoft.Compute/virtualMachines','Microsoft.Network/publicIPAddresses','Microsoft.Network/bastionHosts','Microsoft.Network/virtualNetworkGateways') }).Count -or
+            ($Foundation | ConvertTo-Json -Depth 100) -match 'SecurityControl|10\.0\.0\.4') {
+            throw 'Private foundation must not introduce bootstrap compute, public IPs, exclusion tags, or a fixed endpoint IP.'
+        }
+        foreach ($Parameter in @('virtualNetworkName','virtualNetworkAddressPrefix','privateEndpointSubnetName',
+            'privateEndpointSubnetPrefix','privateEndpointName','privateEndpointNetworkInterfaceName','privateDnsLinkName')) {
+            if (-not $Template.parameters[$Parameter].ContainsKey('defaultValue') -or
+                $Foundations[0].properties.parameters[$Parameter].value -ne "[parameters('$Parameter')]") {
+                throw "Private network parameter is missing a default or module wiring: $Parameter"
+            }
+        }
+        Write-Host 'Private Azure foundation contracts passed.'
         foreach ($File in Get-ChildItem -LiteralPath $RepositoryRoot -Recurse -Filter '*.md' -File) {
             $Content = Get-Content -LiteralPath $File.FullName -Raw
             foreach ($Match in [regex]::Matches($Content, '\]\((\.\.?/[^)]+|#[^)]+)\)')) {

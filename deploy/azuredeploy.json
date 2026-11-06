@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "4538238372939519292"
+      "templateHash": "11734051997371343927"
     },
     "name": "Fabric GeoAnalytics deployment experience",
     "description": "Azure foundation for a guided Fabric GeoAnalytics workload. Finish Fabric setup separately."
@@ -44,6 +44,55 @@
       "type": "string",
       "metadata": {
         "description": "Object ID of the interactive deployment and notebook user."
+      }
+    },
+    "virtualNetworkName": {
+      "type": "string",
+      "defaultValue": "[format('vnet-{0}', parameters('deploymentName'))]",
+      "metadata": {
+        "description": "Name of the dedicated Key Vault virtual network."
+      }
+    },
+    "virtualNetworkAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16",
+      "metadata": {
+        "description": "Private IPv4 address space for the dedicated virtual network. Review for overlap before deployment."
+      }
+    },
+    "privateEndpointSubnetName": {
+      "type": "string",
+      "defaultValue": "snet-private-endpoints",
+      "metadata": {
+        "description": "Name of the dedicated private endpoint subnet."
+      }
+    },
+    "privateEndpointSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/24",
+      "metadata": {
+        "description": "Private IPv4 subnet prefix within the virtual network address space."
+      }
+    },
+    "privateEndpointName": {
+      "type": "string",
+      "defaultValue": "[format('pe-{0}', parameters('keyVaultName'))]",
+      "metadata": {
+        "description": "Name of the Azure Key Vault private endpoint."
+      }
+    },
+    "privateEndpointNetworkInterfaceName": {
+      "type": "string",
+      "defaultValue": "[format('nic-{0}', parameters('privateEndpointName'))]",
+      "metadata": {
+        "description": "Name of the network interface created and managed by the private endpoint."
+      }
+    },
+    "privateDnsLinkName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-vault', parameters('virtualNetworkName'))]",
+      "metadata": {
+        "description": "Name of the private DNS virtual network link."
       }
     },
     "shouldCreateCapacity": {
@@ -111,6 +160,27 @@
           },
           "userObjectId": {
             "value": "[parameters('userObjectId')]"
+          },
+          "virtualNetworkName": {
+            "value": "[parameters('virtualNetworkName')]"
+          },
+          "virtualNetworkAddressPrefix": {
+            "value": "[parameters('virtualNetworkAddressPrefix')]"
+          },
+          "privateEndpointSubnetName": {
+            "value": "[parameters('privateEndpointSubnetName')]"
+          },
+          "privateEndpointSubnetPrefix": {
+            "value": "[parameters('privateEndpointSubnetPrefix')]"
+          },
+          "privateEndpointName": {
+            "value": "[parameters('privateEndpointName')]"
+          },
+          "privateEndpointNetworkInterfaceName": {
+            "value": "[parameters('privateEndpointNetworkInterfaceName')]"
+          },
+          "privateDnsLinkName": {
+            "value": "[parameters('privateDnsLinkName')]"
           }
         },
         "template": {
@@ -120,10 +190,10 @@
             "_generator": {
               "name": "bicep",
               "version": "0.48.1.52935",
-              "templateHash": "14952751245629648002"
+              "templateHash": "5793472030911655226"
             },
             "name": "GeoAnalytics Key Vault",
-            "description": "RBAC-enabled vault and access for the interactive customer user."
+            "description": "Private-only RBAC vault, dedicated private endpoint network and DNS, and access for the interactive customer user."
           },
           "parameters": {
             "location": {
@@ -149,6 +219,48 @@
               "metadata": {
                 "description": "Interactive customer user object ID."
               }
+            },
+            "virtualNetworkName": {
+              "type": "string",
+              "metadata": {
+                "description": "Dedicated virtual network name."
+              }
+            },
+            "virtualNetworkAddressPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Private IPv4 address space for the virtual network."
+              }
+            },
+            "privateEndpointSubnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Dedicated private endpoint subnet name."
+              }
+            },
+            "privateEndpointSubnetPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Private endpoint subnet IPv4 address prefix."
+              }
+            },
+            "privateEndpointName": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Key Vault private endpoint name."
+              }
+            },
+            "privateEndpointNetworkInterfaceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the network interface managed by the private endpoint."
+              }
+            },
+            "privateDnsLinkName": {
+              "type": "string",
+              "metadata": {
+                "description": "Private DNS virtual network link name."
+              }
             }
           },
           "variables": {
@@ -171,12 +283,106 @@
                 "enableSoftDelete": true,
                 "enablePurgeProtection": true,
                 "softDeleteRetentionInDays": 90,
-                "publicNetworkAccess": "Enabled",
+                "publicNetworkAccess": "Disabled",
                 "networkAcls": {
-                  "bypass": "AzureServices",
-                  "defaultAction": "Allow"
+                  "bypass": "None",
+                  "defaultAction": "Deny"
                 }
               }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2025-05-01",
+              "name": "[parameters('virtualNetworkName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('virtualNetworkAddressPrefix')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "[parameters('privateEndpointSubnetName')]",
+                    "properties": {
+                      "addressPrefix": "[parameters('privateEndpointSubnetPrefix')]",
+                      "privateEndpointNetworkPolicies": "Disabled"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2025-05-01",
+              "name": "[parameters('privateEndpointName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "customNetworkInterfaceName": "[parameters('privateEndpointNetworkInterfaceName')]",
+                "subnet": {
+                  "id": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName')), parameters('privateEndpointSubnetName'))]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('{0}-vault', parameters('privateEndpointName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]",
+                      "groupIds": [
+                        "vault"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2024-06-01",
+              "name": "privatelink.vaultcore.azure.net",
+              "location": "global",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.vaultcore.azure.net', parameters('privateDnsLinkName'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2025-05-01",
+              "name": "[format('{0}/{1}', parameters('privateEndpointName'), 'default')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "vault",
+                    "properties": {
+                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]",
+                "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointName'))]"
+              ]
             },
             {
               "type": "Microsoft.Authorization/roleAssignments",
@@ -207,6 +413,27 @@
                 "description": "Vault ARM ID."
               },
               "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+            },
+            "virtualNetworkId": {
+              "type": "string",
+              "metadata": {
+                "description": "Dedicated virtual network ARM ID."
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+            },
+            "privateEndpointId": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Key Vault private endpoint ARM ID."
+              },
+              "value": "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointName'))]"
+            },
+            "privateDnsZoneId": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault private DNS zone ARM ID."
+              },
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
             }
           }
         }
@@ -335,6 +562,27 @@
         "description": "Key Vault ARM ID."
       },
       "value": "[reference('vault').outputs.id.value]"
+    },
+    "virtualNetworkId": {
+      "type": "string",
+      "metadata": {
+        "description": "Dedicated virtual network ARM ID. This does not connect the deployment computer or Fabric to the virtual network."
+      },
+      "value": "[reference('vault').outputs.virtualNetworkId.value]"
+    },
+    "keyVaultPrivateEndpointId": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Key Vault private endpoint ARM ID. Connection approval must be verified separately."
+      },
+      "value": "[reference('vault').outputs.privateEndpointId.value]"
+    },
+    "keyVaultPrivateDnsZoneId": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault private DNS zone ARM ID."
+      },
+      "value": "[reference('vault').outputs.privateDnsZoneId.value]"
     },
     "capacityResourceId": {
       "type": "string",

@@ -34,3 +34,6 @@ jobs:
       - name: Test portal handoff offline
         shell: pwsh
         run: .\deploy\tests\Test-Experience.ps1
+      - name: Test managed private endpoint contracts offline
+        shell: pwsh
+        run: .\deploy\tests\Test-ManagedPrivateEndpoint.ps1

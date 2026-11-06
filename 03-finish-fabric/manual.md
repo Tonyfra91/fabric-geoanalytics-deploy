@@ -219,6 +219,14 @@ Leave the workspace browser tab open.
 
 ### Step 20 Enter the key at the hidden PowerShell prompt
 
+> [!IMPORTANT]
+> The current private-network implementation adds a manual Azure approval
+> checkpoint before Fabric finish. If it stops for a Pending managed endpoint,
+> use [the managed endpoint approval and resume instructions](../deploy/README.md#fabric-managed-private-endpoint).
+> Endpoint approval alone does not provision a key. The Python setup notebook
+> is a later implementation stage; the local secret command below still
+> requires an approved private network path.
+
 Where to be: your visible local PowerShell 7 terminal, not chat or a notebook cell.
 
 In the local terminal, not Azure/Fabric browser:

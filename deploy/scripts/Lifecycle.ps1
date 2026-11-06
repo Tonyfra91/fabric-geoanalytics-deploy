@@ -59,6 +59,151 @@ function Read-DeploymentManifest {
 }
 #endregion
 
+#region Managed private endpoint
+function ConvertTo-KeyVaultManagedPrivateEndpoint {
+    <#
+    .SYNOPSIS
+        Validates endpoint ownership and projects only nonsecret API metadata.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param([Parameter(Mandatory)][hashtable]$Manifest, [Parameter(Mandatory)][hashtable]$Endpoint)
+    $Id = [guid]::Empty
+    if (-not [guid]::TryParse($Endpoint.id, [ref]$Id) -or $Id -eq [guid]::Empty -or
+        $Endpoint.name -ne "mpe-$($Manifest.keyVaultName)" -or
+        ([string]$Endpoint.targetPrivateLinkResourceId).TrimEnd('/') -ne ([string]$Manifest.resources.keyVault.id).TrimEnd('/') -or
+        $Endpoint.targetSubresourceType -ne 'vault') {
+        throw 'Managed private endpoint ownership/configuration mismatch: expected the Fast Pass name, recorded Key Vault resource ID, and vault subresource. Nothing will be replaced.'
+    }
+    if ($Manifest.managedPrivateEndpoint -and $Manifest.managedPrivateEndpoint.id -ne $Endpoint.id) {
+        throw 'Managed private endpoint ID differs from recorded state. Inspect the existing connection; it will not be adopted or replaced.'
+    }
+    if ($Endpoint.provisioningState -notin @('Provisioning','Updating','Succeeded','Failed','Deleting') -or
+        ($Endpoint.connectionState.status -and $Endpoint.connectionState.status -notin @('Pending','Approved','Rejected','Disconnected'))) {
+        throw "Unknown managed private endpoint state: activation=$($Endpoint.provisioningState), approval=$($Endpoint.connectionState.status). Inspect the connection before continuing."
+    }
+    return @{
+        id=$Endpoint.id;name=$Endpoint.name;targetPrivateLinkResourceId=$Manifest.resources.keyVault.id
+        targetSubresourceType=$Endpoint.targetSubresourceType;provisioningState=$Endpoint.provisioningState
+        approvalState=$(if ($Endpoint.connectionState.status) { $Endpoint.connectionState.status } else { $null })
+    }
+}
+
+function Get-KeyVaultManagedPrivateEndpoint {
+    <#
+    .SYNOPSIS
+        Discovers and inspects the expected endpoint without creating or modifying it.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param([Parameter(Mandatory)][hashtable]$Manifest)
+    $WorkspaceId = [guid]::Empty
+    $VaultId = [string]$Manifest.resources.keyVault.id
+    if (-not [guid]::TryParse($Manifest.workspaceId, [ref]$WorkspaceId) -or $WorkspaceId -eq [guid]::Empty -or
+        $VaultId -notmatch '^/subscriptions/([^/]+)/resourceGroups/([^/]+)/providers/Microsoft\.KeyVault/vaults/([^/]+)/?$' -or
+        $Matches[1] -ne $Manifest.subscriptionId -or $Matches[2] -ne $Manifest.resourceGroupName -or
+        $Matches[3] -ne $Manifest.keyVaultName) {
+        throw 'Managed private endpoint requires a valid workspace ID and matching Key Vault ARM ID from deployment state.'
+    }
+    $Name = "mpe-$($Manifest.keyVaultName)"
+    $Base = "https://api.fabric.microsoft.com/v1/workspaces/$($Manifest.workspaceId)/managedPrivateEndpoints"
+    $Endpoints = @(Get-ServiceCollection $Base | Where-Object name -eq $Name)
+    if ($Endpoints.Count -gt 1) { throw "Multiple managed private endpoints named $Name. No endpoint will be created or replaced." }
+    if (-not $Endpoints.Count) {
+        if ($Manifest.managedPrivateEndpoint) {
+            throw 'Recorded managed private endpoint is missing from discovery. Inspect its connection before another submission; it will not be recreated automatically.'
+        }
+        return
+    }
+    $Listed = ConvertTo-KeyVaultManagedPrivateEndpoint -Manifest $Manifest -Endpoint $Endpoints[0]
+    $Endpoint = (Invoke-ServiceRequest -Uri "$Base/$($Listed.id)").Data
+    if ($Endpoint.id -ne $Listed.id) { throw 'Managed private endpoint inspection returned a different endpoint ID.' }
+    return ConvertTo-KeyVaultManagedPrivateEndpoint -Manifest $Manifest -Endpoint $Endpoint
+}
+
+function Initialize-KeyVaultManagedPrivateEndpoint {
+    <#
+    .SYNOPSIS
+        Creates or resumes the Fabric endpoint and stops until activation and Azure approval succeed.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param([Parameter(Mandatory)][hashtable]$Manifest, [int]$TimeoutSeconds = 1800)
+    $Endpoint = Get-KeyVaultManagedPrivateEndpoint -Manifest $Manifest
+    $VaultId = $Manifest.resources.keyVault.id
+    $Vault = (Invoke-ServiceRequest -Uri "https://management.azure.com$($VaultId.TrimEnd('/'))?api-version=2025-05-01" `
+        -Audience 'https://management.azure.com/').Data
+    if (([string]$Vault.id).TrimEnd('/') -ne $VaultId.TrimEnd('/') -or $Vault.properties.publicNetworkAccess -ne 'Disabled') {
+        throw 'Key Vault identity or networking differs from the private Fast Pass baseline. Public network access must remain Disabled; no networking settings were changed.'
+    }
+    $Disposition = 'Existing'
+    $Base = "https://api.fabric.microsoft.com/v1/workspaces/$($Manifest.workspaceId)/managedPrivateEndpoints"
+    if (-not $Endpoint) {
+        $Response = Invoke-ServiceRequest -Uri $Base -Method POST -Body @{
+            name="mpe-$($Manifest.keyVaultName)";targetPrivateLinkResourceId=$VaultId
+            targetSubresourceType='vault';requestMessage='Fabric GeoAnalytics Fast Pass access to Key Vault'
+        }
+        if ($Response.StatusCode -ne 201) {
+            throw 'Managed private endpoint creation did not return HTTP 201. Inspect workspace connections before another submission; no automatic retry will be made.'
+        }
+        $Endpoint = ConvertTo-KeyVaultManagedPrivateEndpoint -Manifest $Manifest -Endpoint $Response.Data
+        $Disposition = 'Created'
+        $Manifest.resources.ManagedPrivateEndpoint = @{id=$Endpoint.id;created=$true}
+    }
+    elseif (-not $Manifest.resources.ContainsKey('ManagedPrivateEndpoint')) {
+        $Manifest.resources.ManagedPrivateEndpoint = @{id=$Endpoint.id;created=$false}
+    }
+    $Deadline = [datetime]::UtcNow.AddSeconds($TimeoutSeconds)
+    while ($true) {
+        $Manifest.managedPrivateEndpoint = $Endpoint
+        $Manifest.updatedAt = [datetime]::UtcNow.ToString('o')
+        Save-DeploymentManifest $Manifest
+        $Approval = if ($Endpoint.approvalState) { $Endpoint.approvalState } else { 'not reported by Fabric' }
+        Write-Host "Managed endpoint: $Disposition ($($Endpoint.name)); Activation: $($Endpoint.provisioningState); Azure approval: $Approval"
+        if ($Endpoint.provisioningState -in @('Failed','Deleting') -or $Endpoint.approvalState -in @('Rejected','Disconnected')) {
+            throw 'Managed private endpoint activation or approval failed. Inspect the recorded connection; it will not be deleted, replaced, or resubmitted.'
+        }
+        if ($Endpoint.approvalState -eq 'Pending') {
+            throw "Azure approval Pending. Stop: open Key Vault $($Manifest.keyVaultName) > Networking > Private endpoint connections. Verify the Fabric request for $($Endpoint.name), target vault, and request message; an authorized administrator must approve it. Then rerun .\deploy.ps1 configure-network. No secret access is ready."
+        }
+        if ($Endpoint.provisioningState -eq 'Succeeded') {
+            if ($Endpoint.approvalState -ne 'Approved') {
+                throw 'Managed private endpoint activation succeeded but Azure approval is not reported. Inspect the connection and rerun configure-network; secret access is not ready.'
+            }
+            return $Endpoint
+        }
+        if ([datetime]::UtcNow.AddSeconds(15) -gt $Deadline) {
+            throw 'Managed private endpoint activation timed out. The recorded endpoint may still be provisioning. Use status and configure-network to inspect/resume; do not submit a duplicate.'
+        }
+        Start-Sleep -Seconds 15
+        $Raw = (Invoke-ServiceRequest -Uri "$Base/$($Endpoint.id)").Data
+        $Endpoint = ConvertTo-KeyVaultManagedPrivateEndpoint -Manifest $Manifest -Endpoint $Raw
+    }
+}
+
+function Set-DeploymentNetwork {
+    <#
+    .SYNOPSIS
+        Resumes only the managed endpoint without republishing Fabric assets or redeploying Azure.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][hashtable]$Config)
+    $Manifest = Read-DeploymentManifest $Config
+    $Base = "https://api.fabric.microsoft.com/v1/workspaces/$($Manifest.workspaceId)"
+    $Workspace = (Invoke-ServiceRequest -Uri $Base).Data
+    if ($Workspace.id -ne $Manifest.workspaceId -or $Workspace.description -ne "fabric-zombie-outbreak:$($Config.deploymentName)" -or
+        $Workspace.capacityId -ne $Manifest.capacityId) {
+        throw 'Workspace identity, ownership or capacity mismatch. No network changes were submitted.'
+    }
+    $Roles = @(Get-ServiceCollection "$Base/roleAssignments")
+    if (-not @($Roles | Where-Object { $_.principal.id -eq $Manifest.userObjectId -and $_.role -eq 'Admin' }).Count) {
+        throw 'Current user must be workspace Admin to configure the managed private endpoint. No privileges will be assigned.'
+    }
+    $null = Initialize-KeyVaultManagedPrivateEndpoint -Manifest $Manifest
+    Write-Host 'Managed private endpoint activation Succeeded and Azure approval Approved. Secret access and notebook execution have not been tested.'
+}
+#endregion
+
 #region Provisioning
 function Get-CompletedAzureDeployment {
     <#
@@ -119,7 +264,7 @@ function New-PortalCustomerConfig {
     $Suffix = $Config.deploymentName -replace '-','_'
     $Config.workspaceName = "$($Config.deploymentName) GeoAnalytics"
     $Config.lakehouseName = "Geo_$Suffix"
-    $Config.environmentName = "$($Config.deploymentName) Runtime 1.3"
+    $Config.environmentName = "$($Config.deploymentName) Runtime 1-3"
     $Config.notebookName = "$($Config.deploymentName) Demo"
     if ($Parameters.shouldCreateCapacity.value) {
         if ($ExistingCapacityId) { throw 'Do not supply ExistingCapacityId when the portal created a new capacity.' }
@@ -179,6 +324,9 @@ function Get-OrCreateFabricItem {
     )
     $Base = "https://api.fabric.microsoft.com/v1/workspaces/$WorkspaceId/items"
     $Matches = @(Get-ServiceCollection $Base | Where-Object displayName -eq $Name)
+    if ($Type -eq 'Lakehouse' -and @($Matches | Where-Object type -eq 'Lakehouse').Count -eq 1) {
+        $Matches = @($Matches | Where-Object type -ne 'SQLEndpoint')
+    }
     if ($Matches.Count -gt 1) { throw "Ambiguous item name: $Name" }
     if ($Matches.Count) {
         $Item = $Matches[0]
@@ -190,6 +338,32 @@ function Get-OrCreateFabricItem {
     $Item = Wait-FabricOperation (Invoke-ServiceRequest -Uri $Base -Method POST -Body $Body)
     if (-not $Item.id) { throw "Create $Type did not return an ID. Inspect the workspace before retrying." }
     return @{id=$Item.id;created=$true}
+}
+
+function Wait-WorkspaceCapacity {
+    <#
+    .SYNOPSIS
+        Verifies capacity assignment through workspace reads because assignment need not return Location.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory)][string]$WorkspaceId,
+        [Parameter(Mandatory)][string]$CapacityId,
+        [ValidateRange(0,1800)][int]$TimeoutSeconds = 600
+    )
+    $Deadline = [datetime]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        $Workspace = (Invoke-ServiceRequest -Uri "https://api.fabric.microsoft.com/v1/workspaces/$WorkspaceId").Data
+        if (-not $Workspace -or $Workspace.id -ne $WorkspaceId) { throw 'Capacity assignment check returned unexpected workspace metadata.' }
+        if ($Workspace.capacityId -eq $CapacityId) { return $Workspace }
+        if ($Workspace.capacityId) { throw 'Workspace belongs to a different capacity; refusing reassignment.' }
+        if ([datetime]::UtcNow.AddSeconds(10) -gt $Deadline) {
+            throw 'Workspace capacity assignment timed out. It may still be running; inspect the workspace before retrying.'
+        }
+        Write-Host '[Workspace capacity assignment] Pending'
+        Start-Sleep -Seconds 10
+    } while ($true)
 }
 
 function Invoke-Deployment {
@@ -282,12 +456,14 @@ function Invoke-Deployment {
     $Base = "https://api.fabric.microsoft.com/v1/workspaces/$($Workspace.id)"
     if ($Workspace.capacityId -and $Workspace.capacityId -ne $CapacityId) { throw 'Workspace belongs to a different capacity; refusing reassignment.' }
     if ($Workspace.capacityId -ne $CapacityId) {
-        $null = Wait-FabricOperation (Invoke-ServiceRequest -Uri "$Base/assignToCapacity" -Method POST -Body @{capacityId=$CapacityId})
+        $null = Invoke-ServiceRequest -Uri "$Base/assignToCapacity" -Method POST -Body @{capacityId=$CapacityId}
+        $Workspace = Wait-WorkspaceCapacity -WorkspaceId $Workspace.id -CapacityId $CapacityId
     }
     $Roles = @(Get-ServiceCollection "$Base/roleAssignments")
     if (-not @($Roles | Where-Object { $_.principal.id -eq $User.id -and $_.role -eq 'Admin' }).Count) {
         throw 'Current user is not workspace Admin. No additional privileges will be fabricated or silently assigned.'
     }
+    $null = Initialize-KeyVaultManagedPrivateEndpoint -Manifest $Manifest
     foreach ($Type in @('Lakehouse','Environment','Notebook')) {
         $Name = $Config["$($Type.ToLowerInvariant())Name"]
         $Options = @{WorkspaceId=$Workspace.id;Name=$Name;Type=$Type;Owner=$Owner}
@@ -314,8 +490,7 @@ function Invoke-Deployment {
             }
             $Settings = Get-Content -LiteralPath (Join-Path $script:Root 'deploy\fabric\environment\spark-compute.json') -Raw | ConvertFrom-Json -AsHashtable
             $null = Invoke-ServiceRequest -Uri "$EnvironmentBase/staging/sparkcompute?beta=false" -Method PATCH -Body $Settings
-            $Published = Invoke-ServiceRequest -Uri "$EnvironmentBase/staging/publish?beta=false" -Method POST
-            if ($Published.StatusCode -eq 202) { $null = Wait-FabricOperation $Published }
+            $null = Invoke-ServiceRequest -Uri "$EnvironmentBase/staging/publish?beta=false" -Method POST
             $Deadline = [datetime]::UtcNow.AddMinutes(30)
             do {
                 $Environment = (Invoke-ServiceRequest -Uri $EnvironmentBase).Data
@@ -334,7 +509,7 @@ function Invoke-Deployment {
             }
         }
         elseif ($Type -eq 'Notebook' -and -not $Item.created) {
-            $null = Wait-FabricOperation (Invoke-ServiceRequest -Uri "$Base/items/$($Item.id)/updateDefinition" -Method POST -Body $Definition)
+            $null = Wait-FabricOperation -NoResult (Invoke-ServiceRequest -Uri "$Base/items/$($Item.id)/updateDefinition" -Method POST -Body @{definition=$Definition})
         }
     }
     $Manifest.stage = 'Validating'
@@ -344,10 +519,13 @@ function Invoke-Deployment {
         $Manifest.repositoryCommit = $Commit
     }
     Save-DeploymentManifest $Manifest
-    $null = Get-DeploymentStatus $Config
+    $Status = Get-DeploymentStatus $Config
+    if (-not $Status.managedPrivateEndpointReady) {
+        throw 'Managed private endpoint is no longer activated and approved. Inspect status and resume configure-network before finishing deployment.'
+    }
     $Manifest.stage = 'Configured'
     Save-DeploymentManifest $Manifest
-    Write-Host 'Deployment configured. No notebook was executed. Next: .\deploy.ps1 configure-secret'
+    Write-Host 'Deployment configured. No notebook was executed. Managed endpoint activation and approval verified; secret provisioning still requires an approved private caller.'
 }
 #endregion
 
@@ -426,6 +604,7 @@ function Invoke-NotebookJob {
     }
     $Uri = [string]($Response.Headers['Location'] | Select-Object -First 1)
     if ($Response.StatusCode -ne 202 -or -not $Uri) { throw 'Notebook submission did not return an accepted job with Location.' }
+    $Uri = Resolve-FabricOperationUri -Location $Uri
     $Manifest.lastJobUri = $Uri
     Save-DeploymentManifest $Manifest
     Write-Host "Submitted notebook job: $Uri"
@@ -535,9 +714,20 @@ function Get-DeploymentStatus {
     $Base = "https://api.fabric.microsoft.com/v1/workspaces/$($Manifest.workspaceId)"
     $Workspace = (Invoke-ServiceRequest -Uri $Base).Data
     if ($Workspace.capacityId -ne $Manifest.capacityId) { throw 'Workspace capacity differs from manifest.' }
+    $Endpoint = Get-KeyVaultManagedPrivateEndpoint -Manifest $Manifest
+    $Result.managedPrivateEndpoint = $Endpoint
+    $Result.managedPrivateEndpointReady = [bool]($Endpoint -and $Endpoint.provisioningState -eq 'Succeeded' -and $Endpoint.approvalState -eq 'Approved')
+    if (-not $Endpoint) { $Result.managedPrivateEndpointMessage = 'Expected endpoint not found. Configure-network requires explicit approval before creation.' }
     foreach ($Type in @('Lakehouse','Environment','Notebook')) {
         $Id = $Manifest["$($Type.ToLowerInvariant())Id"]
-        if (-not $Id) { throw "Deployment has no $Type yet. Rerun deploy to resume." }
+        if (-not $Id) {
+            if (-not $Result.managedPrivateEndpointReady) {
+                $Result.fabricItemsVerified = $false
+                $Result.nextAction = "Deployment has no $Type yet. Resolve the managed endpoint checkpoint before finishing Fabric."
+                return $Result
+            }
+            throw "Deployment has no $Type yet. Rerun deploy to resume."
+        }
         $Item = (Invoke-ServiceRequest -Uri "$Base/items/$Id").Data
         if ($Item.type -ne $Type -or $Item.description -ne "fabric-zombie-outbreak:$($Config.deploymentName)") { throw "$Type ownership/type mismatch." }
         $Result[$Type] = @{id=$Item.id;name=$Item.displayName}

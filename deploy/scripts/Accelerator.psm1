@@ -97,7 +97,7 @@ function Invoke-ServiceRequest {
         ($Audience -eq 'https://api.fabric.microsoft.com' -and $Parsed.Host -ne 'api.fabric.microsoft.com') -or
         ($Audience -eq 'https://vault.azure.net' -and $Parsed.Host -notmatch '^[a-zA-Z0-9-]+\.vault\.azure\.net$') -or
         ($Audience -eq 'https://management.azure.com/' -and $Parsed.Host -ne 'management.azure.com')) {
-        throw 'Refusing to send credentials to an unexpected service URL.'
+        throw "Refusing to send credentials to an unexpected service URL (method=$Method, scheme=$($Parsed.Scheme), host=$($Parsed.Host)). URL credentials, path, and query are not logged."
     }
     for ($Attempt = 0; $Attempt -lt 5; $Attempt++) {
         $Token = Invoke-AzJson @('account','get-access-token','--resource',$Audience)
@@ -140,6 +140,26 @@ function Get-ServiceCollection {
     }
 }
 
+function Resolve-FabricOperationUri {
+    <#
+    .SYNOPSIS
+        Resolves operation locations against the Fabric API without accepting another origin.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string]$Location)
+    $Resolved = $null
+    if ([string]::IsNullOrWhiteSpace($Location) -or
+        -not [uri]::TryCreate([uri]'https://api.fabric.microsoft.com/', $Location, [ref]$Resolved)) {
+        throw 'Fabric operation returned an invalid Location. Inspect the operation before retrying.'
+    }
+    if ($Resolved.Scheme -ne 'https' -or $Resolved.Host -ne 'api.fabric.microsoft.com' -or
+        $Resolved.UserInfo -or $Resolved.Port -ne 443 -or $Resolved.Fragment) {
+        throw "Refusing an unexpected Fabric operation URL (scheme=$($Resolved.Scheme), host=$($Resolved.Host), port=$($Resolved.Port)). URL credentials, path, and query are not logged."
+    }
+    return $Resolved.AbsoluteUri
+}
+
 function Wait-FabricOperation {
     <#
     .SYNOPSIS
@@ -147,10 +167,20 @@ function Wait-FabricOperation {
     #>
     [CmdletBinding()]
     [OutputType([object])]
-    param([Parameter(Mandatory)][hashtable]$Response, [int]$TimeoutSeconds = 1800)
+    param([Parameter(Mandatory)][hashtable]$Response, [int]$TimeoutSeconds = 1800, [switch]$NoResult)
     if ($Response.StatusCode -ne 202) { return $Response.Data }
-    $Uri = [string]($Response.Headers['Location'] | Select-Object -First 1)
-    if (-not $Uri) { throw 'Asynchronous operation did not return Location.' }
+    $OperationId = [string]($Response.Headers['x-ms-operation-id'] | Select-Object -First 1)
+    if ($OperationId) {
+        $Id = [guid]::Empty
+        if (-not [guid]::TryParse($OperationId, [ref]$Id) -or $Id -eq [guid]::Empty) {
+            throw 'Fabric operation returned an invalid x-ms-operation-id. Inspect the submitted operation before retrying.'
+        }
+        $Uri = "https://api.fabric.microsoft.com/v1/operations/$Id"
+    } else {
+        $Location = [string]($Response.Headers['Location'] | Select-Object -First 1)
+        if (-not $Location) { throw 'Asynchronous operation did not return Location or x-ms-operation-id. Inspect the submitted operation before retrying.' }
+        $Uri = Resolve-FabricOperationUri -Location $Location
+    }
     $Deadline = [datetime]::UtcNow.AddSeconds($TimeoutSeconds)
     do {
         $Delay = 10
@@ -163,6 +193,7 @@ function Wait-FabricOperation {
         if ($State -in @('Failed','Cancelled')) { throw "Fabric operation $State. Inspect operation $Uri." }
         if ($State -notin @('NotStarted','Running','Succeeded')) { throw "Unexpected Fabric operation state: $State" }
     } while ($State -ne 'Succeeded')
+    if ($NoResult) { return }
     return (Invoke-ServiceRequest -Uri "$($Uri.TrimEnd('/'))/result").Data
 }
 #endregion
@@ -316,4 +347,4 @@ function Test-Prerequisite {
 
 . (Join-Path $PSScriptRoot 'Notebook.ps1')
 . (Join-Path $PSScriptRoot 'Lifecycle.ps1')
-Export-ModuleMember -Function Read-CustomerConfig, Test-Prerequisite, Invoke-Deployment, Set-GeoAnalyticsSecret, Invoke-Simulation, Get-DeploymentStatus, New-DeployableNotebook, New-PortalCustomerConfig
+Export-ModuleMember -Function Read-CustomerConfig, Test-Prerequisite, Invoke-Deployment, Set-DeploymentNetwork, Set-GeoAnalyticsSecret, Invoke-Simulation, Get-DeploymentStatus, New-DeployableNotebook, New-PortalCustomerConfig

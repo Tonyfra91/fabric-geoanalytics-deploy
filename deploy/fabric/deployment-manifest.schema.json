@@ -23,6 +23,19 @@
     "lakehouseId": { "type": "string", "format": "uuid" },
     "environmentId": { "type": "string", "format": "uuid" },
     "notebookId": { "type": "string", "format": "uuid" },
+    "managedPrivateEndpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "targetPrivateLinkResourceId", "targetSubresourceType", "provisioningState", "approvalState"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "name": { "type": "string", "pattern": "^mpe-[a-zA-Z0-9-]+$", "maxLength": 64 },
+        "targetPrivateLinkResourceId": { "type": "string", "pattern": "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\\.KeyVault/vaults/[^/]+/?$" },
+        "targetSubresourceType": { "const": "vault" },
+        "provisioningState": { "enum": ["Provisioning", "Updating", "Succeeded", "Failed", "Deleting"] },
+        "approvalState": { "enum": ["Pending", "Approved", "Rejected", "Disconnected", null] }
+      }
+    },
     "keyVaultName": { "type": "string" },
     "keyVaultUri": { "type": "string", "pattern": "^https://[a-zA-Z0-9-]+\\.vault\\.azure\\.net/$" },
     "keyVaultSecretName": { "const": "geoanalytics-api-key" },

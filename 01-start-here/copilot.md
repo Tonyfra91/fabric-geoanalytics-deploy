@@ -324,8 +324,10 @@ See/expect: tool/test results, account/capacity checks, and a checkpoint table:
 | `BLOCKED`      | A failure or unavailable prerequisite prevents progress           |
 | `NOT RUN`      | The stage has not happened                                        |
 
-The local checks should report 39 existing checks and 22 handoff checks,
-plus documentation/template checks. These confirm the files are ready;
+The local checks should report 27 HTTP compatibility checks, 46 accelerator
+checks and 35 handoff checks, plus documentation/template checks. The separate
+managed private endpoint suite reports 35 checks.
+These confirm the files are ready;
 you still need to confirm your access and check the deployed results later.
 If an approval is missing, resolve it using
 [manual prerequisite instructions](./manual.md#step-04-confirm-azure-deployment-and-role-assignment-permissions).

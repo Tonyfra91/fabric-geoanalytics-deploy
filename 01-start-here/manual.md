@@ -174,10 +174,14 @@ Run the offline checks:
 .\deploy\scripts\Build-Template.ps1 -Check
 ```
 
-See/expect: `Offline checks passed: 39`, `Experience checks passed: 22`,
-the portal/documentation contract PASS message, and
+See/expect: `HTTP compatibility checks passed: 27`, `Offline checks passed: 46`,
+`Experience checks passed: 35`, the portal/documentation contract PASS message, and
 `Portal template matches Bicep source.` These tests use cloud mocks;
 they do not certify your permissions or tenant.
+
+For private-network lifecycle coverage, also run
+`.\deploy\tests\Test-ManagedPrivateEndpoint.ps1` and expect
+`Managed private endpoint checks passed: 35`.
 
 If PowerShell says a script is blocked because it came from the Internet,
 review the repo scripts and ask IT about your organization's script policy.

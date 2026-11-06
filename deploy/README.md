@@ -20,11 +20,13 @@ Deployment and simulation execution are separate operations.
 PowerShell entry point
   validate          Read-only Azure/Fabric checks and manual confirmations
   deploy -WhatIf    ARM preview only; no Fabric mutations
-  deploy            Subscription Bicep -> resource group, Key Vault, vault RBAC
+  deploy            Subscription Bicep -> resource group, private Key Vault,
+                    vault RBAC, VNet/subnet, private endpoint and private DNS
                     Optional new capacity, only with capacity.mode = new
                     Fabric REST -> workspace, capacity assignment, Lakehouse,
                                    published environment, notebook
   configure-secret  Hidden prompt -> Key Vault geoanalytics-api-key
+  configure-network Fabric managed private endpoint only; stop for Azure approval
   run               Runtime authorization probe -> parameterized simulation
                     -> six Delta tables and a nonsecret OneLake result receipt
   status            Read item metadata, environment settings, and last job
@@ -110,6 +112,10 @@ conflicts, vault name availability, Fabric authentication, visible active
 capacity, workspace ownership, and an existing workspace's current-user Admin
 role. Existing customer resources without matching ownership are not adopted.
 
+Workspace, Environment and Notebook names accept letters, numbers, spaces,
+underscores and hyphens, not periods. The generated Environment display name
+ends in `Runtime 1-3`; the actual Spark runtime remains `1.3`.
+
 Exit codes: `0` means checks passed with all confirmations supplied; `1` means
 failure; `2` means automated checks passed but manual confirmation is required.
 `deploy -WhatIf` permits unresolved confirmations so an administrator can review
@@ -159,8 +165,10 @@ For CLI-only Azure and Fabric provisioning, use:
 .\deploy.ps1 deploy
 ```
 
-The deployment provisions an RBAC-enabled, soft-delete and purge-protected Key
-Vault, grants Key Vault Secrets Officer to the interactive user, creates or
+The current Bicep source provisions an RBAC-enabled, soft-delete and
+purge-protected Key Vault with public network access disabled, a dedicated
+VNet/subnet, a dynamically addressed private endpoint, and private DNS.
+It grants Key Vault Secrets Officer to the interactive user. Fabric setup creates or
 reuses deployment-owned Fabric items, assigns the selected capacity, configures
 Runtime 1.3 with `spark.native.enabled=false`, publishes the environment, waits
 for completion, imports the notebook, and validates deployed item metadata
@@ -189,9 +197,38 @@ State is checkpointed after provisioning milestones. Do not edit or delete it
 to bypass checks. Rerun `deploy` after inspecting a partial failure. Azure and
 Fabric resources are not rolled back automatically.
 
+Capacity assignment can return `202 Accepted` without a `Location` header.
+Deployment verifies the assignment by polling the workspace's `capacityId`
+for up to ten minutes, without resubmitting the assignment. A timeout does
+not mean the assignment was cancelled.
+
+Operation and notebook-job `Location` headers can be absolute or relative
+to `https://api.fabric.microsoft.com/`. Polling requires that same HTTPS
+origin and rejects user information, nonstandard ports and fragments before
+acquiring credentials. For long-running item operations, a valid
+`x-ms-operation-id` takes precedence: the script constructs the documented
+`https://api.fabric.microsoft.com/v1/operations/<id>` state/result endpoints
+instead of following a regional Location. An invalid operation ID fails
+explicitly. Notebook definition updates verify completion without requesting
+a result body, and send the required `definition` request wrapper.
+Rejection diagnostics include the scheme, host and
+port, not credentials, paths or query strings. If a location is rejected,
+inspect the service operation before an explicitly approved retry; do not
+disable URL validation or assume that the service action failed.
+
+Environment publication is verified separately by polling the Environment's
+`properties.publishDetails.state` through `api.fabric.microsoft.com`, then
+checking the published runtime and Spark settings. Its submission may return
+a regional `analysis.windows.net` Location; the script does not follow that
+URL or expand its credential host allowlist. Publication failure or timeout
+still blocks Notebook import.
+
 Exact name matching, expected type, ownership tags/descriptions, and compatible
 region/capacity configuration are required. Duplicate names and unowned items
-fail clearly. A repeat deployment reuses matching items, republishes the
+fail clearly. When exactly one Lakehouse matches, its same-named SQL endpoint
+is excluded from the name-conflict check. Lakehouse ownership is still required;
+multiple Lakehouses, other item-type conflicts, and a SQL endpoint without a
+matching Lakehouse still fail. A repeat deployment reuses matching items, republishes the
 environment, and updates the deployable notebook. This is not a no-op preview.
 It can replace custom edits to that deployment-owned notebook.
 
@@ -229,9 +266,172 @@ Delete the protected file securely according to organizational policy.
 Do not commit it, paste the key into chat, use `--value` in shell history,
 or run `az keyvault secret show` without an output projection.
 
-The POC vault has a public endpoint with Entra/RBAC authentication and TLS.
-Private networking and managed private endpoints are not implemented.
-Do not use this default in an environment that requires private-only access.
+### Private Key Vault foundation
+
+The current Bicep source keeps Key Vault public network access disabled, with
+firewall default action Deny and no trusted-service bypass. It creates a
+dedicated VNet and private-endpoint subnet, an Azure private endpoint targeting
+the `vault` subresource, and a `privatelink.vaultcore.azure.net` private DNS zone.
+A zone group manages the endpoint's DNS record; a VNet link makes that private
+zone available to the dedicated network. No private IP is hardcoded, and the
+endpoint manages its own NIC. No VM, VPN, Bastion, public IP, or policy exclusion
+tag is deployed.
+
+The additional subscription-template parameters have these defaults:
+
+| Parameter                             | Default                         |
+| ------------------------------------- | ------------------------------- |
+| `virtualNetworkName`                  | `vnet-<deploymentName>`          |
+| `virtualNetworkAddressPrefix`         | `10.0.0.0/16`                   |
+| `privateEndpointSubnetName`           | `snet-private-endpoints`        |
+| `privateEndpointSubnetPrefix`         | `10.0.0.0/24`                   |
+| `privateEndpointName`                 | `pe-<keyVaultName>`              |
+| `privateEndpointNetworkInterfaceName` | `nic-<privateEndpointName>`      |
+| `privateDnsLinkName`                  | `<virtualNetworkName>-vault`    |
+
+Review names, CIDR overlap, subnet containment, networking permissions and
+organization policy before deploying a fresh dedicated foundation.
+`Microsoft.Network` must be registered, in addition to the existing providers.
+Azure endpoint approval depends on the deployer's permissions and must be
+verified explicitly. The nonsecret outputs include the VNet, private endpoint,
+and private DNS zone resource IDs, not the secret or a fixed private address.
+
+> [!IMPORTANT]
+> This is the first repository implementation stage, not a completed private
+> Fast Pass. The unchanged Azure button remains pinned to `v0.1.0`; it does not
+> publish the modified local template. Do not redeploy the manually validated
+> foundation or replace existing networking to test these changes.
+
+The Azure private endpoint does not provide connectivity from your computer or
+from Fabric. The existing local `configure-secret` and `run` metadata check
+still require a caller with an approved private route and DNS resolution.
+Do not enter the key until that path is available, and do not enable public
+access to bypass a failed check.
+
+### Fabric managed private endpoint
+
+Stage 2 has repository-test coverage and limited live validation of reuse.
+The original manual experiment established an endpoint with Activation
+Succeeded and Approval Approved while Key Vault public access remained
+Disabled. It remains separate from the automated lifecycle evidence below.
+
+LIVE VALIDATED (2026-11-05, existing approved endpoint only):
+
+* Existing approved endpoint discovery
+* Target Key Vault resource ID and `vault` subresource validation
+* Separate Succeeded activation and Approved approval recognition
+* Endpoint reuse and network-only resume
+* Idempotent rerun
+* Nonsecret state persistence
+
+The exported `configure-network` handler, `Set-DeploymentNetwork`, ran twice
+under a runtime GET-only service-request guard. Both runs reported Existing,
+activation Succeeded and approval Approved. All 15 service requests were GETs;
+no create, approval or asset-update request was issued. Endpoint count remained
+one before and after, with identical endpoint IDs. Key Vault public access
+remained Disabled. The local manifest retained Configured and all existing
+resource records, adding only endpoint metadata, its reused resource record
+(`created=false`), and the updated timestamp. The persisted state passed its
+schema. No secret access, notebook execution or Stage 3 work was performed.
+
+REPOSITORY TESTED ONLY:
+
+* Creation when no endpoint exists
+* Pending-approval stop
+* Post-approval resume after an accelerator-created endpoint
+* Collision behavior against a live conflicting endpoint
+* Pagination against a live multi-page endpoint inventory
+
+The last two behaviors use mocked inventories in repository tests; neither
+was exercised against live conflicting endpoints or live multi-page results.
+The guarded handler runs validate the network-only lifecycle, not invocation
+of the CLI argument dispatcher. The full `status` command was not run live
+because it also obtains a notebook definition using a metadata-read POST.
+Network status was read directly through the lifecycle endpoint-status helper
+and reported independently by both network-only runs.
+
+Fabric finish now discovers the endpoint named `mpe-<keyVaultName>` in the
+deployment workspace before creating one. Its target comes from the Key Vault
+ARM resource ID recorded by the Azure handoff. Both that resource ID and the
+`vault` subresource must match. Duplicate expected names, a mismatched target,
+or disagreement with a recorded endpoint ID stop deployment without deleting,
+adopting, or replacing a connection. Other names are not adopted as Fast Pass
+endpoints.
+
+The supported Fabric v1 API operations are:
+
+* `GET /workspaces/<workspaceId>/managedPrivateEndpoints` with pagination
+* `GET /workspaces/<workspaceId>/managedPrivateEndpoints/<endpointId>`
+* `POST /workspaces/<workspaceId>/managedPrivateEndpoints`
+
+Creation uses `name`, `targetPrivateLinkResourceId`, `targetSubresourceType`
+(`vault`), and the request message
+`Fabric GeoAnalytics Fast Pass access to Key Vault`. The supported response
+is HTTP 201. The lifecycle persists the endpoint ID before waiting for
+activation; it never repeatedly submits creation while polling.
+
+The manifest records only endpoint identity, target, `provisioningState`,
+and `approvalState`. `provisioningState` is Fabric activation;
+`approvalState` comes from the API's `connectionState.status`.
+Missing approval metadata remains null, not Approved or an invented API state.
+`status` reports `managedPrivateEndpointReady` only for Succeeded plus Approved.
+This indicates connection metadata readiness, not successful secret retrieval.
+Legacy Configured manifests do not establish endpoint readiness.
+
+If approval is Pending, the command persists that checkpoint and exits with an
+error before proceeding with Fabric item creation/publication. An authorized
+administrator must open the deployed Key Vault in Azure portal, then
+**Networking > Private endpoint connections**. Identify the Fabric-generated
+connection using its target and the request message, and approve that request
+under the organization's policy. Azure may display a generated connection name
+rather than the Fabric endpoint name. Do not approve unrelated requests.
+This stage does not issue Azure approval writes or grant roles.
+
+After approval, request separate permission to resume the network step:
+
+```powershell
+.\deploy.ps1 configure-network
+.\deploy.ps1 status
+```
+
+`configure-network` verifies the original interactive identity, workspace
+ownership/capacity and Admin role, then discovers/reuses or creates only the
+managed endpoint. It does not redeploy Azure, republish the Environment,
+update the Notebook, or submit compute. It requires approval because it can
+create an endpoint if none exists. Pending approval, failed activation,
+rejection, disconnection, unknown state and timeout are not success.
+For timeouts, inspect the recorded endpoint before resuming; a missing recorded
+endpoint is not automatically recreated.
+
+If Fabric assets were never finished, resume the separately approved
+`deploy -AzureDeploymentName <verified-record>` step after the network checkpoint.
+That command may republish/update assets; do not use it merely to inspect or
+resume networking on an already configured workspace.
+
+The create API requires workspace Admin and delegated `Workspace.ReadWrite.All`;
+list/get require Viewer or higher and `Workspace.Read.All` or
+`Workspace.ReadWrite.All`. Azure approval separately requires authorized Key
+Vault private-endpoint-connection write permission. No secret Set/Get permission
+is implied by endpoint approval.
+
+The customer-controlled Python setup notebook and replacement of the local
+metadata gate are later stages, not implemented here. No API key is requested
+by the managed endpoint flow. Keep secret bootstrap and compute paused until
+those stages and their explicit approvals are complete.
+
+Before claiming live validation of endpoint creation and its approval cycle,
+separately authorize and verify a newly submitted request, the Pending
+checkpoint, Azure approval, and resume without duplicate creation. Do not
+delete or modify an existing validated endpoint to manufacture that test.
+Run the offline contract suite with:
+
+```powershell
+.\deploy\tests\Test-ManagedPrivateEndpoint.ps1
+```
+
+See the [create API](https://learn.microsoft.com/en-us/rest/api/fabric/core/managed-private-endpoints/create-workspace-managed-private-endpoint)
+and [list API](https://learn.microsoft.com/en-us/rest/api/fabric/core/managed-private-endpoints/list-workspace-managed-private-endpoints)
+contracts.
 
 ## Run and explore Fabric results
 
@@ -346,13 +546,15 @@ guided setup.
 README blue button
     -> versioned ARM JSON compiled from Bicep
     -> subscription / dedicated resource group
-       -> RBAC Key Vault
+       -> private RBAC Key Vault
+       -> dedicated VNet/subnet / Azure private endpoint / private DNS
        -> optional new Fabric capacity
 
 Interactive PowerShell finish
     -> verify completed Azure deployment and identity
     -> read-only prerequisite and ownership checks
     -> Fabric REST workspace / capacity assignment
+    -> managed Key Vault endpoint / explicit Azure approval checkpoint
     -> Lakehouse / published environment / notebook
 
 Explicit secret and run commands

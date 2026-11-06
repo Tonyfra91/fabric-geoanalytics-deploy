@@ -61,6 +61,13 @@ RBAC-enabled Key Vault, and Key Vault Secrets Officer assignment to your user,
 plus new capacity only if opted in.
 No Esri key is created or accepted, and no notebook is executed.
 
+> [!NOTE]
+> The unchanged button uses the released `v0.1.0` template. The current local
+> Bicep and generated template add a private-only Key Vault network foundation
+> for a future release. See the [private foundation reference](../deploy/README.md#private-key-vault-foundation)
+> for its additional parameters and remaining Fabric/secret-setup stages.
+> Do not rerun Azure deployment over an existing manually validated foundation.
+
 If review/deployment reports invalid parameters, permissions, policy, name
 conflicts or quota, stop and inspect the error. Do not repeatedly click Create
 or select unrelated existing resources to get past it.

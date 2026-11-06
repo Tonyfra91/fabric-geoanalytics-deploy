@@ -62,6 +62,13 @@ Repeat finish setup republishes the environment and can replace custom edits
 to the deployment-owned notebook. Do not approve it merely to inspect a
 previously configured workspace; use status instead.
 
+For the current private-network implementation, finish can stop at the Azure
+managed-private-endpoint approval checkpoint before importing/publishing items.
+Follow the [approval and network-only resume reference](../deploy/README.md#fabric-managed-private-endpoint).
+Request separate approval for `configure-network`; it can create an endpoint
+but does not republish existing items or execute a notebook. Do not treat
+activation Succeeded as approval Approved or as proof of secret retrieval.
+
 After reviewing the proposal, tell Copilot:
 
 ```text

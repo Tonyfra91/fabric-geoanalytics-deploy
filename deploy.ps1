@@ -24,7 +24,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('help', 'validate', 'deploy', 'configure-secret', 'run', 'status', 'remove')]
+    [ValidateSet('help', 'validate', 'deploy', 'configure-network', 'configure-secret', 'run', 'status', 'remove')]
     [string]$Command = 'help',
     [string]$ConfigPath = (Join-Path $PSScriptRoot 'deploy\config\customer.json'),
     [string]$ParametersPath,
@@ -45,6 +45,7 @@ Bicep-led deployment automation for Azure and Microsoft Fabric resources
   .\deploy.ps1 validate [-ConfigPath <file>]
   .\deploy.ps1 deploy [-WhatIf]
   .\deploy.ps1 deploy -AzureDeploymentName <portal-deployment-name>
+  .\deploy.ps1 configure-network
   .\deploy.ps1 configure-secret
   .\deploy.ps1 run [-ParametersPath <file>]
   .\deploy.ps1 status
@@ -69,6 +70,7 @@ Deployment never executes a notebook. Removal is intentionally not automated.
                     if (@($Report | Where-Object Status -eq 'Manual').Count) { exit 2 }
                 }
                 'deploy' { Invoke-Deployment -Config $Config -WhatIf:$WhatIf -AzureDeploymentName $AzureDeploymentName }
+                'configure-network' { Set-DeploymentNetwork -Config $Config }
                 'configure-secret' { Set-GeoAnalyticsSecret -Config $Config }
                 'run' { Invoke-Simulation -Config $Config -ParametersPath $ParametersPath }
                 'status' { Get-DeploymentStatus -Config $Config | ConvertTo-Json -Depth 20 | Out-Host }
