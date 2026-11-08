@@ -1,6 +1,6 @@
 ---
 title: 03 Finish Fabric - Manual walkthrough
-description: Create the Fabric workspace items and store the Esri key using a hidden prompt.
+description: Finish private Fabric connectivity and provide the Esri key through secure ARM input.
 ms.date: 2026-11-04
 ---
 
@@ -70,7 +70,7 @@ For ownership name `geo-atlanta-youralias-01`, generated names are:
 | ----------------- | --------------------------------------- |
 | `workspaceName`   | `geo-atlanta-youralias-01 GeoAnalytics` |
 | `lakehouseName`   | `Geo_geo_atlanta_youralias_01`          |
-| `environmentName` | `geo-atlanta-youralias-01 Runtime 1.3`  |
+| `environmentName` | `geo-atlanta-youralias-01 Runtime 1-3`  |
 | `notebookName`    | `geo-atlanta-youralias-01 Demo`         |
 
 Record your actual four names. Names change with your ownership name.
@@ -143,7 +143,7 @@ $LASTEXITCODE
 ```
 
 Why this command: it verifies the existing Azure handoff and performs the
-Fabric REST setup that the blue button cannot do.
+Fabric REST setup that the Azure template does not perform.
 Do **not** substitute bare `.\deploy.ps1 deploy` here; bare deploy is the
 alternative path that submits Azure provisioning again.
 
@@ -152,6 +152,8 @@ See/expect:
 1. Prerequisite table passes again.
 2. Workspace is created/reused only if deployment ownership matches.
 3. Capacity assignment completes.
+   The expected vault managed endpoint is discovered/reused or created.
+   Its activation and Azure approval are checked separately.
 4. Lakehouse and environment are created.
 5. Messages such as `[Environment publication] Running` appear while the
    environment publishes. Wait for completion; do not start another process.
@@ -159,7 +161,7 @@ See/expect:
 7. Final success text:
 
 ```text
-Deployment configured. No notebook was executed. Next: .\deploy.ps1 configure-secret
+Deployment configured. No notebook was executed. Managed endpoint activation and approval verified. Next: .\deploy.ps1 configure-secret
 ```
 
 The exit code must be `0`. Publication can take several minutes; the script
@@ -169,7 +171,25 @@ There is no guarantee of a fixed duration in your tenant.
 If it fails, record the exact error and inspect the relevant Azure/Fabric
 activity. State under `deploy\state` is checkpointed; do not edit/delete it
 to bypass ownership checks. Resolve the cause, then rerun the **same finish
-command**, not the blue button. No automatic rollback occurs.
+command**, not another Azure foundation deployment. No automatic rollback occurs.
+
+#### If endpoint approval is pending
+
+The Azure/network owner opens the deployed Key Vault > **Networking >
+Private endpoint connections**. Select the request matching the reported
+Fabric endpoint/workspace, verify its target is this vault (`vault` subresource),
+then select **Approve**. Do not approve unrelated requests.
+
+After that action:
+
+```powershell
+.\deploy.ps1 configure-network
+.\deploy.ps1 deploy -AzureDeploymentName '<same-portal-deployment-record-name>'
+```
+
+Continue only when activation is **Succeeded** and approval is **Approved**.
+Network-only resume does not republish Fabric assets. The finish command then
+completes the remaining items. Do not recreate or replace an existing endpoint.
 
 Next: [Step 19](#step-19-open-fabric-and-inspect-what-was-created).
 Now return to the Fabric browser tab.
@@ -212,54 +232,61 @@ If it fails, resolve the error before secret setup/run.
 Do not manually create duplicate items, import the original notebook, or
 edit the generated workload to insert secrets.
 
-Next: [Step 20](#step-20-enter-the-key-at-the-hidden-powershell-prompt).
+Next: [Step 20](#step-20-securely-provide-the-esri-api-key).
 Leave the workspace browser tab open.
 
 ## Configure the Esri key
 
-### Step 20 Enter the key at the hidden PowerShell prompt
+### Step 20 Securely provide the Esri API key
 
 > [!IMPORTANT]
-> The current private-network implementation adds a manual Azure approval
-> checkpoint before Fabric finish. If it stops for a Pending managed endpoint,
-> use [the managed endpoint approval and resume instructions](../deploy/README.md#fabric-managed-private-endpoint).
-> Endpoint approval alone does not provision a key. The Python setup notebook
-> is a later implementation stage; the local secret command below still
-> requires an approved private network path.
+> Enter the credential only in Azure's masked deployment parameter field.
+> Never put it in chat, the template editor, a parameter file, configuration,
+> a notebook, or a terminal command. Do not record this browser session.
 
-Where to be: your visible local PowerShell 7 terminal, not chat or a notebook cell.
-
-In the local terminal, not Azure/Fabric browser:
+Where to be: PowerShell 7 at the repository root, then Azure portal Custom deployment.
 
 ```powershell
 .\deploy.ps1 configure-secret
 ```
 
-See this exact prompt:
+See/expect: nonsecret instructions, the secure template's local path, and your
+existing subscription, resource group and vault. If metadata is already
+verified, skip another deployment and continue below.
 
-```text
-Esri GeoAnalytics API key (hidden):
+1. Open [Custom deployment](https://portal.azure.com/#create/Microsoft.Template).
+2. Select **Build your own template in the editor**, then **Load file**.
+   Load [secret-setup.azuredeploy.json](../deploy/secret-setup.azuredeploy.json)
+   from this checkout and select **Save**. This file contains no credential.
+3. Select the printed subscription and **existing** resource group. Set
+   `keyVaultName` to the printed vault name; do not create a new group or vault.
+4. Enter the authorized Esri credential only in the masked
+   **Geo Analytics Api Key** (`geoAnalyticsApiKey`) parameter field.
+   Stop if it is not masked. Do not export/download parameter values.
+5. Select **Review + create**. Expect one `Microsoft.KeyVault/vaults/secrets`
+   resource named `<your-vault>/geoanalytics-api-key`, enabled. No networking,
+   roles, capacity or Fabric resources should change. Do not enable deployment
+   debug logging. If the secret already exists, stop instead of overwriting it.
+6. Select **Create** once and wait for **Deployment succeeded**. Do not resubmit
+   while a deployment is running or after an ambiguous failure.
+7. Return to PowerShell and verify metadata:
+
+```powershell
+.\deploy.ps1 verify-secret
 ```
-
-Paste the authorized Step 11 key at that prompt and press **Enter**.
-The input is masked; it must not be echoed as plain text.
-Do not put the key after the command, in a screenshot, or into a notebook cell.
 
 See/expect:
 
 ```text
-Secret stored; metadata access verified for the interactive user. Runtime access is checked during run.
+Secret metadata verified; runtime access is checked during run.
 ```
 
-The secret's name is `geoanalytics-api-key` in your deployed vault.
-For a manual metadata check, Azure portal search **Key vaults > your vault >
-Objects > Secrets**. Expect that name. Do not open/show/copy its secret value
-for evidence. If browsing metadata is denied, inspect the error and RBAC.
-
-A vault 403 can indicate role propagation, an inactive role, or network/policy
-denial. Have the Azure owner inspect **vault > Access control (IAM)** and
-network settings; rerun after the cause is resolved. Do not grant broad roles
-or disable policy to suppress the error.
-A successful secret write does not prove Spark can retrieve it.
+The metadata command uses ARM and never retrieves the value. Key Vault public
+access stays Disabled; a VM, VPN, Bastion or private Cloud Shell is not needed.
+The deployer needs ARM secret-write and deployment permissions; the notebook
+user separately needs data-plane secret-read permission.
+For a failure, share only the status and redacted category. Do not enable
+public vault access, grant broad roles, or show the key for troubleshooting.
+Successful metadata verification does not yet prove GeoAnalytics authorization.
 
 Next: [Step 21](../04-run-and-verify/manual.md#step-21-submit-the-first-run-from-powershell).

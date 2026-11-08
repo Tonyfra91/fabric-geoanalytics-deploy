@@ -1,6 +1,6 @@
 ---
 title: 04 Run and verify
-description: Run the small sample, open its results and optionally try real population data.
+description: Run the bounded sample, view its map in Fabric and verify all six SQL outputs.
 ms.date: 2026-11-04
 ---
 
@@ -22,8 +22,8 @@ Continue the route you selected:
 * [Manual alternative: Steps 21-25 and acceptance](./manual.md)
 
 Start with the small synthetic run, which uses generated sample population
-data. Check its results before deciding whether to approve the optional
-real-population run.
+data. This is end-to-end functional validation, not a benchmark. Optional
+real-population execution was **NOT RUN** and is not required to finish.
 If a command times out or the browser looks idle, check the existing job
 before starting another one; it may still be running.
 
@@ -31,8 +31,12 @@ before starting another one; it may still be running.
 
 An access check runs first, followed by the simulation. When both succeed,
 you can open six results tables and a `result.json` run summary in OneLake.
-The guide shows you how to check the data and compare SQL row counts with
-that summary. You will inspect tables, not a map or dashboard.
+The guide shows you how to prepare Results, then **Open Results > Run all > View map**,
+and finally compare all six SQL row counts with that summary. Separately approve
+viewer publication and its interactive compute to see the study
+grid, reached cells and outbreak origin on a north-up spatial map in Fabric.
+It uses the completed run, not another simulation. No external basemap,
+ArcGIS publishing credentials or new infrastructure is required.
 If you skip the real-population run, record it as `NOT RUN`.
 Use the [completion checklist](./manual.md#acceptance-checklist) to finish.
 

@@ -63,14 +63,32 @@ Copilot runs status and reads the existing nonsecret manifest. It should supply:
 * The run summary, `Files/zombie_outbreak/run_id=<actual ID>/result.json`
 * SQL examples using actual table names, with the schema to verify in the explorer
 
-You open the Lakehouse and SQL analytics endpoint and follow
-[manual Steps 23-24](./manual.md#step-23-open-the-six-tables-and-onelake-receipt).
-That reference covers each click, schema/table expansion, file preview,
-**New SQL query**, **Run**, and comparison with receipt counts.
+Inspect the Lakehouse tables and receipt using
+[manual Step 23](./manual.md#step-23-open-the-six-tables-and-onelake-receipt).
+Next view the map, then perform the independent SQL count check.
 
-SQL tables may take a little longer to appear after the run. Tell Copilot
-when you can see them and whether the row counts match the run summary.
-Keep any remaining SQL check marked as incomplete until you have checked it.
+First, separately approve publication of the owned Results notebook:
+
+```powershell
+.\deploy.ps1 view-results
+```
+
+This creates or updates only the owned `<deploymentName> Results` notebook.
+It reads the existing verified run and renders a north-up map with the study
+grid, reached cells and origin. It never retrieves the key, writes tables or
+reruns the simulation. Publication submits **no Spark job** and preserves
+simulation state. Repeating it can replace edits to that viewer.
+An existing historical preview job must finish before publication.
+
+Expect exit `0`, the verified run ID and Results URL. Then separately approve
+one interactive paid-compute run: **Open Results > Run all > View map**.
+Confirm the gray grid, red reached cells and blue origin in Fabric.
+A green job alone does not establish manual map acceptance.
+The map is a local projection, not the original ArcGIS basemap or dashboard.
+Finally use manual Step 24's six-table `COUNT_BIG` query and confirm every
+SQL count matches your receipt. Do not rerun the simulation to force metadata sync.
+Tables may take time to appear. Tell Copilot when you can see them and whether
+all counts match. Keep the SQL check incomplete until you have checked it.
 You need no separate SQL database/client or ArcGIS publishing credentials.
 
 ## FP15 Separately approve the small Atlanta real-population run
@@ -82,8 +100,9 @@ You need no separate SQL database/client or ArcGIS publishing credentials.
 | See        | A new verified run ID/output set, or a clear `NOT RUN` status                                                                              |
 | Next       | Repeat [FP14](#fp14-read-the-actual-results-in-fabric-and-sql) for the new names, then [FP16](#fp16-finish-with-evidence-or-resume-safely) |
 
-This small run uses real US population and social-vulnerability data,
-as in the source demo. It uses Atlanta coordinates, three days, 10 km, H3 resolution 6,
+This optional experiment was **NOT RUN** during end-to-end validation.
+It uses real US population and social-vulnerability data as in the source demo,
+with Atlanta coordinates, three days, 10 km, H3 resolution 6,
 real population, seed 42, and overwrite disabled.
 Confirm the public-source network and Esri prerequisites still hold.
 

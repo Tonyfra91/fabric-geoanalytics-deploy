@@ -525,64 +525,99 @@ function Invoke-Deployment {
     }
     $Manifest.stage = 'Configured'
     Save-DeploymentManifest $Manifest
-    Write-Host 'Deployment configured. No notebook was executed. Managed endpoint activation and approval verified; secret provisioning still requires an approved private caller.'
+    Write-Host 'Deployment configured. No notebook was executed. Managed endpoint activation and approval verified. Next: .\deploy.ps1 configure-secret'
 }
 #endregion
 
 #region Secrets and run/status
-function Test-SecretMetadata {
+function Get-GeoAnalyticsSecretMetadata {
     <#
     .SYNOPSIS
-        Checks secret metadata without retrieving or displaying a secret value.
+        Reads only ARM secret metadata, without requiring a client route into the private vault.
     #>
     [CmdletBinding()]
+    [OutputType([hashtable])]
     param([Parameter(Mandatory)][hashtable]$Manifest)
-    $Uri = "$($Manifest.keyVaultUri.TrimEnd('/'))/secrets?api-version=7.4"
-    $Found = $false
+    $VaultId = ([string]$Manifest.resources.keyVault.id).TrimEnd('/')
+    $ExpectedId = "/subscriptions/$($Manifest.subscriptionId)/resourceGroups/$($Manifest.resourceGroupName)/providers/Microsoft.KeyVault/vaults/$($Manifest.keyVaultName)"
+    if (-not $VaultId -or $VaultId -ne $ExpectedId) { throw 'Secret metadata requires the matching Key Vault ARM ID from deployment state.' }
+    $Vault = (Invoke-ServiceRequest -Uri "https://management.azure.com${VaultId}?api-version=2025-05-01" -Audience 'https://management.azure.com/').Data
+    if ($Vault.id -ne $VaultId -or $Vault.properties.publicNetworkAccess -ne 'Disabled') {
+        throw 'Key Vault identity or networking differs from the private Fast Pass baseline. Public network access must remain Disabled.'
+    }
+    $Uri = "https://management.azure.com$VaultId/secrets?api-version=2025-05-01"
     $Seen = [System.Collections.Generic.HashSet[string]]::new()
     while ($Uri) {
+        $Parsed = [uri]$Uri
+        if ($Parsed.Scheme -ne 'https' -or $Parsed.Host -ne 'management.azure.com' -or
+            -not $Parsed.IsDefaultPort -or $Parsed.UserInfo -or $Parsed.Fragment -or
+            $Parsed.AbsolutePath.TrimEnd('/') -ne "$VaultId/secrets") {
+            throw 'Unexpected Key Vault ARM metadata continuation URL. Stopped without following it.'
+        }
         if (-not $Seen.Add($Uri)) { throw 'Repeated Key Vault continuation URL.' }
-        $Page = (Invoke-ServiceRequest -Uri $Uri -Audience 'https://vault.azure.net').Data
+        $Page = (Invoke-ServiceRequest -Uri $Uri -Audience 'https://management.azure.com/').Data
+        if ($Page -isnot [hashtable] -or $Page.value -isnot [array]) { throw 'Invalid Key Vault ARM metadata response.' }
         foreach ($Secret in $Page.value) {
-            if (([uri]$Secret.id).AbsolutePath.TrimEnd('/') -eq '/secrets/geoanalytics-api-key') {
-                $Found = $true
+            if ($Secret.id -eq "$VaultId/secrets/geoanalytics-api-key") {
+                $Attributes = $Secret.properties.attributes
                 $Now = [datetimeoffset]::UtcNow.ToUnixTimeSeconds()
-                if ($Secret.attributes.enabled -eq $false -or
-                    ($Secret.attributes.exp -and $Secret.attributes.exp -le $Now) -or
-                    ($Secret.attributes.nbf -and $Secret.attributes.nbf -gt $Now)) {
+                if ($Attributes.enabled -isnot [bool] -or -not $Attributes.enabled -or
+                    ($null -ne $Attributes.exp -and $Attributes.exp -le $Now) -or
+                    ($null -ne $Attributes.nbf -and $Attributes.nbf -gt $Now)) {
                     throw 'GeoAnalytics secret is disabled, expired, or not yet valid.'
                 }
+                return @{id=$Secret.id;enabled=$true;expires=$Attributes.exp;notBefore=$Attributes.nbf}
             }
         }
         $Uri = $Page.nextLink
     }
-    if (-not $Found) { throw 'Missing geoanalytics-api-key. Run configure-secret.' }
+}
+
+function Test-SecretMetadata {
+    <#
+    .SYNOPSIS
+        Requires enabled, currently valid ARM metadata without retrieving a secret value.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][hashtable]$Manifest)
+    if (-not (Get-GeoAnalyticsSecretMetadata -Manifest $Manifest)) {
+        throw 'Missing geoanalytics-api-key. Run configure-secret and complete the secure Azure deployment.'
+    }
 }
 
 function Set-GeoAnalyticsSecret {
     <#
     .SYNOPSIS
-        Prompts securely and puts the key directly into Key Vault without CLI arguments or disk storage.
+        Shows the secure Azure deployment handoff; never accepts or handles a credential.
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][hashtable]$Config)
     $Manifest = Read-DeploymentManifest $Config
     if ($Manifest.stage -ne 'Configured') { throw 'Finish deployment before configuring the secret.' }
-    $Secret = Read-Host 'Esri GeoAnalytics API key (hidden)' -AsSecureString
-    if ($Secret.Length -eq 0) { throw 'An empty key will not be stored.' }
-    $Pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret)
-    try {
-        $Plaintext = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($Pointer)
-        $null = Invoke-ServiceRequest -Uri "$($Manifest.keyVaultUri.TrimEnd('/'))/secrets/geoanalytics-api-key?api-version=7.4" `
-            -Audience 'https://vault.azure.net' -Method PUT -Body @{value=$Plaintext}
+    if (Get-GeoAnalyticsSecretMetadata -Manifest $Manifest) {
+        Write-Host 'Secret metadata verified; runtime access is checked during run. No credential was requested or changed.'
+        return
     }
-    finally {
-        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($Pointer)
-        $Plaintext = $null
-        $Secret.Dispose()
-    }
-    Test-SecretMetadata $Manifest
-    Write-Host 'Secret stored; metadata access verified for the interactive user. Runtime access is checked during run.'
+    $TemplatePath = Join-Path $script:Root 'deploy\secret-setup.azuredeploy.json'
+    if (-not (Test-Path -LiteralPath $TemplatePath)) { throw 'Secure deployment template is missing. Restore the checkout or run Build-Template.ps1.' }
+    Write-Host 'Customer action required: securely provide the Esri key in Azure, not this terminal or Copilot.'
+    Write-Host 'Open https://portal.azure.com/#create/Microsoft.Template and choose Build your own template in the editor.'
+    Write-Host "Choose Load file, select $TemplatePath, then Save. The file contains no credential."
+    Write-Host "Select subscription $($Manifest.subscriptionId), existing resource group $($Manifest.resourceGroupName), Key Vault $($Manifest.keyVaultName)."
+    Write-Host 'Enter the key only in the masked Geo Analytics Api Key parameter field, never in the template editor.'
+    Write-Host 'Review + create: Incremental deployment of one enabled geoanalytics-api-key secret; no vault, networking, RBAC or Fabric updates.'
+    Write-Host 'Do not continue if a credential already exists or the review shows other resources. Do not export parameters or enable debug logging.'
+    Write-Host 'After Deployment succeeded, run .\deploy.ps1 verify-secret. Do not rerun Fabric finish.'
+}
+
+function Test-GeoAnalyticsSecret {
+    <#
+    .SYNOPSIS
+        Verifies the configured deployment's credential using ARM metadata only.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][hashtable]$Config)
+    Test-SecretMetadata -Manifest (Read-DeploymentManifest -Config $Config)
 }
 
 function Invoke-NotebookJob {
@@ -592,9 +627,14 @@ function Invoke-NotebookJob {
     #>
     [CmdletBinding()]
     [OutputType([hashtable])]
-    param([Parameter(Mandatory)][hashtable]$Manifest, [Parameter(Mandatory)][object[]]$Parameters)
+    param(
+        [Parameter(Mandatory)][hashtable]$Manifest,
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Parameters,
+        [string]$NotebookId = $Manifest.notebookId,
+        [ValidateSet('lastJobUri','lastPreviewJobUri')][string]$JobField = 'lastJobUri'
+    )
     $Base = "https://api.fabric.microsoft.com/v1/workspaces/$($Manifest.workspaceId)"
-    $Response = Invoke-ServiceRequest -Uri "$Base/notebooks/$($Manifest.notebookId)/jobs/execute/instances?beta=false" -Method POST -Body @{
+    $Response = Invoke-ServiceRequest -Uri "$Base/notebooks/$NotebookId/jobs/execute/instances?beta=false" -Method POST -Body @{
         parameters=$Parameters
         executionData=@{compute='Spark';computeConfiguration=@{
             defaultLakehouse=@{referenceType='ById';itemId=$Manifest.lakehouseId;workspaceId=$Manifest.workspaceId}
@@ -605,7 +645,7 @@ function Invoke-NotebookJob {
     $Uri = [string]($Response.Headers['Location'] | Select-Object -First 1)
     if ($Response.StatusCode -ne 202 -or -not $Uri) { throw 'Notebook submission did not return an accepted job with Location.' }
     $Uri = Resolve-FabricOperationUri -Location $Uri
-    $Manifest.lastJobUri = $Uri
+    $Manifest[$JobField] = $Uri
     Save-DeploymentManifest $Manifest
     Write-Host "Submitted notebook job: $Uri"
     $Deadline = [datetime]::UtcNow.AddHours(2)
@@ -621,7 +661,7 @@ function Invoke-NotebookJob {
         if ($Job.status -notin @('NotStarted','InProgress','Completed')) { throw "Unexpected notebook job state: $($Job.status)" }
     } while ($Job.status -ne 'Completed')
     # Exit values are currently exposed by a beta notebook-specific endpoint, not the GA scheduler response.
-    $Details = (Invoke-ServiceRequest -Uri "$Base/notebooks/$($Manifest.notebookId)/jobs/execute/instances/$($Job.id)?beta=true").Data
+    $Details = (Invoke-ServiceRequest -Uri "$Base/notebooks/$NotebookId/jobs/execute/instances/$($Job.id)?beta=true").Data
     if (-not $Details.properties.exitValue) { throw 'Completed job returned no exit value. Inspect the notebook run; outputs have not been verified.' }
     return ($Details.properties.exitValue | ConvertFrom-Json -AsHashtable -Depth 20)
 }
@@ -700,6 +740,58 @@ function Invoke-Simulation {
     Write-Host "Notebook: $($Manifest.notebookId); Lakehouse: $($Manifest.lakehouseId); Job: $($Manifest.lastJobUri)"
 }
 
+function Publish-ResultsNotebook {
+    <#
+    .SYNOPSIS
+        Publishes only the owned results viewer without submitting a Spark job.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][hashtable]$Config)
+    $Manifest = Read-DeploymentManifest $Config
+    if ($Manifest.stage -ne 'Configured') { throw 'Finish deployment before viewing results.' }
+    if ($Manifest.lastPreviewJobUri) {
+        $Previous = (Invoke-ServiceRequest -Uri $Manifest.lastPreviewJobUri).Data
+        if ($Previous.status -notin @('Completed','Failed','Cancelled','Deduped')) {
+            throw "A preview job may still be active. Inspect it before resubmitting: $($Manifest.lastPreviewJobUri)"
+        }
+    }
+    $Status = Get-DeploymentStatus $Config
+    $Notebook = New-ResultsNotebook -Manifest $Manifest -LakehouseName $Status.Lakehouse.name
+    $Json = $Notebook | ConvertTo-Json -Depth 100
+    $Definition = @{
+        format='ipynb'
+        parts=@(@{path='artifact.content.ipynb';payloadType='InlineBase64';payload=[Convert]::ToBase64String([text.encoding]::UTF8.GetBytes($Json))})
+    }
+    $Item = Get-OrCreateFabricItem -WorkspaceId $Manifest.workspaceId -Name "$($Manifest.deploymentName) Results" `
+        -Type Notebook -Owner "fabric-zombie-outbreak:$($Manifest.deploymentName)" -Definition $Definition
+    if ($Manifest.resultsNotebookId -and $Manifest.resultsNotebookId -ne $Item.id) {
+        throw 'Results notebook identity differs from recorded state. Inspect the workspace before updating.'
+    }
+    $Manifest.resultsNotebookId = $Item.id
+    if (-not $Manifest.resources.ContainsKey('ResultsNotebook')) { $Manifest.resources.ResultsNotebook = $Item }
+    Save-DeploymentManifest $Manifest
+    $Base = "https://api.fabric.microsoft.com/v1/workspaces/$($Manifest.workspaceId)"
+    if (-not $Item.created) {
+        $null = Wait-FabricOperation -NoResult (Invoke-ServiceRequest -Uri "$Base/items/$($Item.id)/updateDefinition" -Method POST -Body @{definition=$Definition})
+    }
+    $Saved = Wait-FabricOperation (Invoke-ServiceRequest -Uri "$Base/notebooks/$($Item.id)/getDefinition?format=ipynb" -Method POST)
+    $Parts = @($Saved.definition.parts | Where-Object { $_.path -like '*.ipynb' -and $_.payloadType -eq 'InlineBase64' })
+    if ($Parts.Count -ne 1) { throw 'Cannot verify the saved results notebook definition.' }
+    $Actual = [text.encoding]::UTF8.GetString([Convert]::FromBase64String($Parts[0].payload)) | ConvertFrom-Json -AsHashtable -Depth 100
+    $ActualSource = ($Actual.cells[1].source -join '') -replace "`r`n", "`n"
+    $ExpectedSource = $Notebook.cells[1].source -replace "`r`n", "`n"
+    if ($Actual.cells.Count -ne 2 -or $ActualSource -cne $ExpectedSource -or
+        $Actual.metadata.dependencies.lakehouse.default_lakehouse -ne $Manifest.lakehouseId -or
+        $Actual.metadata.dependencies.lakehouse.default_lakehouse_workspace_id -ne $Manifest.workspaceId -or
+        $Actual.metadata.dependencies.environment.environmentId -ne $Manifest.environmentId -or
+        $Actual.metadata.dependencies.environment.workspaceId -ne $Manifest.workspaceId) {
+        throw 'Saved results notebook source or bindings differ. No Spark job was submitted.'
+    }
+    Write-Host "Results source and bindings verified for run $($Manifest.lastResult.run_id). No Spark job submitted."
+    Write-Host "Results notebook: https://app.fabric.microsoft.com/groups/$($Manifest.workspaceId)/synapsenotebooks/$($Item.id)"
+    Write-Host 'Open Results, then select Run all in Fabric after paid-compute approval. View the map there; do not rerun the simulation.'
+}
+
 function Get-DeploymentStatus {
     <#
     .SYNOPSIS
@@ -714,6 +806,8 @@ function Get-DeploymentStatus {
     $Base = "https://api.fabric.microsoft.com/v1/workspaces/$($Manifest.workspaceId)"
     $Workspace = (Invoke-ServiceRequest -Uri $Base).Data
     if ($Workspace.capacityId -ne $Manifest.capacityId) { throw 'Workspace capacity differs from manifest.' }
+    $Capacity = Get-ActiveFabricCapacity -Capacities @(Get-ServiceCollection 'https://api.fabric.microsoft.com/v1/capacities') -CapacityId $Manifest.capacityId
+    $Result.capacityState = $Capacity.state
     $Endpoint = Get-KeyVaultManagedPrivateEndpoint -Manifest $Manifest
     $Result.managedPrivateEndpoint = $Endpoint
     $Result.managedPrivateEndpointReady = [bool]($Endpoint -and $Endpoint.provisioningState -eq 'Succeeded' -and $Endpoint.approvalState -eq 'Approved')
@@ -751,6 +845,15 @@ function Get-DeploymentStatus {
     $Result.notebookBindingsVerified = $true
     if ($Manifest.lastJobUri) { $Result.lastJob = (Invoke-ServiceRequest -Uri $Manifest.lastJobUri).Data }
     if ($Manifest.lastResult) { $Result.lastVerifiedOutputs = $Manifest.lastResult }
+    if ($Manifest.resultsNotebookId) {
+        $Item = (Invoke-ServiceRequest -Uri "$Base/items/$($Manifest.resultsNotebookId)").Data
+        if ($Item.type -ne 'Notebook' -or $Item.description -ne "fabric-zombie-outbreak:$($Config.deploymentName)") {
+            throw 'Results notebook ownership/type mismatch.'
+        }
+        $Result.ResultsNotebook = @{id=$Item.id;name=$Item.displayName}
+    }
+    if ($Manifest.lastPreviewJobUri) { $Result.lastPreviewJob = (Invoke-ServiceRequest -Uri $Manifest.lastPreviewJobUri).Data }
+    if ($Manifest.lastPreviewResult) { $Result.lastSpatialPreview = $Manifest.lastPreviewResult }
     return $Result
 }
 #endregion

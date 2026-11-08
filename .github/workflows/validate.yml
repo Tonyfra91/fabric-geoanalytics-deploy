@@ -37,3 +37,12 @@ jobs:
       - name: Test managed private endpoint contracts offline
         shell: pwsh
         run: .\deploy\tests\Test-ManagedPrivateEndpoint.ps1
+      - name: Test secure ARM credential step offline
+        shell: pwsh
+        run: .\deploy\tests\Test-SecretProvisioning.ps1
+      - name: Test bounded results viewer offline
+        shell: pwsh
+        run: .\deploy\tests\Test-ResultsPreview.ps1
+      - name: Test retired engineering fixture and persistence inspection offline
+        shell: pwsh
+        run: python -B .\engineering\tests\Test-SecretSetup.py

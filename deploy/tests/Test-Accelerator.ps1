@@ -279,6 +279,9 @@ print("Delta output contract, read-back counts, and overwrite guard passed (mock
                         return @{id=$script:Fixture.subscriptionId;tenantId=$script:Fixture.tenantId;user=@{type='user'}}
                     }
                     'provider' {
+                        if ($script:Scenario -eq 'missing-network-provider' -and $Arguments -contains 'Microsoft.Network') {
+                            return @{registrationState='NotRegistered';resourceTypes=@()}
+                        }
                         $Locations = if ($script:Scenario -eq 'bad-region') {@('West Europe')} else {@('Central US')}
                         return @{registrationState='Registered';resourceTypes=@(@{resourceType='vaults';locations=$Locations},@{resourceType='capacities';locations=$Locations})}
                     }
@@ -311,11 +314,15 @@ print("Delta output contract, read-back counts, and overwrite guard passed (mock
                     $Roles = if ($script:Scenario -eq 'workspace-no-admin') {@()} else {@(@{principal=@{id='44444444-4444-4444-4444-444444444444'};role='Admin'})}
                     return @{Data=@{value=$Roles}}
                 }
-                if ($Uri -like '*vault.azure.net*') {
+                if ($Uri -like 'https://management.azure.com*/providers/Microsoft.KeyVault/vaults/*') {
                     if ($script:Scenario -eq 'secret-denied') { throw 'HTTP 403' }
-                    $Secrets = if ($script:Scenario -eq 'secret-missing') {@()} else {
-                        @(@{id='https://kv-offline-zombie.vault.azure.net/secrets/geoanalytics-api-key';attributes=@{enabled=$true}})
+                    $VaultId = "/subscriptions/$($script:Fixture.subscriptionId)/resourceGroups/$($script:Fixture.resourceGroupName)/providers/Microsoft.KeyVault/vaults/$($script:Fixture.keyVaultName)"
+                    if ($Uri -eq "https://management.azure.com${VaultId}?api-version=2025-05-01") {
+                        return @{Data=@{id=$VaultId;properties=@{publicNetworkAccess='Disabled'}}}
                     }
+                    $Secrets = @(if ($script:Scenario -ne 'secret-missing') {
+                        @{id="$VaultId/secrets/geoanalytics-api-key";properties=@{attributes=@{enabled=$true}}}
+                    })
                     return @{Data=@{value=$Secrets}}
                 }
                 if ($Uri -like '*/items' -and $Method -eq 'GET') {
@@ -348,7 +355,15 @@ print("Delta output contract, read-back counts, and overwrite guard passed (mock
             Assert-Check 'Ready environment has no failed automated checks' (@($Report | Where-Object Status -eq 'Fail').Count -eq 0)
             Assert-Check 'Unconfirmed administrative prerequisites stay manual' (@($Report | Where-Object Status -eq 'Manual').Count -eq 5)
             Assert-Check 'Validate issues no mutation requests' (@($script:Methods | Where-Object { $_ -match '^(POST|PATCH|PUT|DELETE) |^(group create|deployment|provider register)' }).Count -eq 0)
-            foreach ($Scenario in @('missing-azure','missing-fabric','missing-capacity','bad-region','vault-conflict','workspace-incompatible','workspace-no-admin')) {
+            Assert-Check 'Existing-capacity validation requires Network but not Azure Fabric registration' (
+                @($Report | Where-Object Check -eq 'Microsoft.Network').Count -eq 1 -and
+                @($Report | Where-Object Check -eq 'Microsoft.Fabric').Count -eq 0)
+            $script:Fixture.capacity.mode = 'new'
+            $NewReport = Test-Prerequisite $script:Fixture
+            Assert-Check 'Explicit new-capacity mode checks Azure Fabric registration' (
+                @($NewReport | Where-Object Check -eq 'Microsoft.Fabric').Count -eq 1)
+            $script:Fixture.capacity.mode = 'existing'
+            foreach ($Scenario in @('missing-azure','missing-fabric','missing-capacity','bad-region','vault-conflict','workspace-incompatible','workspace-no-admin','missing-network-provider')) {
                 $script:Scenario = $Scenario
                 $Report = Test-Prerequisite $script:Fixture
                 Assert-Check "Validation reports $Scenario explicitly" (@($Report | Where-Object Status -eq 'Fail').Count -gt 0)
@@ -356,7 +371,12 @@ print("Delta output contract, read-back counts, and overwrite guard passed (mock
             $script:Scenario = 'workspace-compatible'
             $Report = Test-Prerequisite $script:Fixture
             Assert-Check 'Compatible owned workspace is reusable' (@($Report | Where-Object Status -eq 'Fail').Count -eq 0)
-            $SecretManifest = @{keyVaultUri='https://kv-offline-zombie.vault.azure.net/'}
+            $SecretManifest = @{
+                keyVaultUri='https://kv-offline-zombie.vault.azure.net/'
+                subscriptionId=$script:Fixture.subscriptionId;resourceGroupName=$script:Fixture.resourceGroupName
+                keyVaultName=$script:Fixture.keyVaultName
+                resources=@{keyVault=@{id="/subscriptions/$($script:Fixture.subscriptionId)/resourceGroups/$($script:Fixture.resourceGroupName)/providers/Microsoft.KeyVault/vaults/$($script:Fixture.keyVaultName)"}}
+            }
             $script:Scenario = 'secret-missing'
             Assert-Fails 'Missing key fails explicitly' { Test-SecretMetadata $SecretManifest } 'Missing'
             $script:Scenario = 'secret-denied'

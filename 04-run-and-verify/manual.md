@@ -25,6 +25,9 @@ See/expect: `SIM_DAYS: 2`, `STUDY_RADIUS_KM: 10`, `H3_RESOLUTION: 6`,
 `USE_REAL_POPULATION: false`, seed `42`, prefix `zombie`, and overwrite disabled.
 The notebook's pinned origin defaults to Atlanta.
 
+This is bounded end-to-end functional validation, not a performance benchmark.
+Do not enlarge the defaults or enable real population automatically.
+
 Now run:
 
 ```powershell
@@ -77,6 +80,7 @@ If a job fails, open its run details and find the error. Common stop points:
 | `Cannot retrieve geoanalytics-api-key`               | Azure/network owner checks executing user's vault Get access, secret existence and Spark networking |
 | `GeoAnalytics authorization failed` / not authorized | Esri owner verifies the subscription/key; do not replace it with a generic ArcGIS key               |
 | Spark cannot start / capacity unavailable            | Capacity owner checks active state, workloads, headroom and access                                  |
+| Status reports capacity Inactive                    | Capacity owner resumes the existing capacity in Azure; charges restart. Do not recreate Environment |
 | Completed job but missing exit value                 | Inspect run details; beta exit-value retrieval is a documented accelerator limitation               |
 | Command timeout                                      | Check current job status before rerunning; it may still be active                                   |
 
@@ -111,8 +115,9 @@ suffixes with full table names and `rows` counts:
 
 Table names follow `zombie_<run_id>_<suffix>` in lowercase.
 Copy the **actual names printed above**, not this placeholder.
-The receipt contains Spark read-back counts; do not expect a prescribed numeric
-count for every output or bit-identical results across runtime partitions.
+The receipt contains this run's Spark read-back counts. Compare SQL with that
+receipt. The synthetic reference counts below are not prescribed counts for
+arbitrary parameters or real-population runs.
 
 In Fabric:
 
@@ -134,45 +139,86 @@ the run ID, Lakehouse binding, run details and manifest before proceeding.
 Some outputs may validly have zero rows, but required origin/grid/daily-state
 outputs cannot be empty for a verified run.
 
-Next: [Step 24](#step-24-verify-the-sql-analytics-endpoint).
+Next: [Step 24](#step-24-view-the-map-and-verify-the-sql-analytics-endpoint).
 
-### Step 24 Verify the SQL analytics endpoint
+### Step 24 View the map and verify the SQL analytics endpoint
 
-Where to be: Fabric portal, in the created Lakehouse's SQL analytics endpoint.
+Where to be: PowerShell for viewer publication, then the Results notebook and
+Lakehouse SQL analytics endpoint in Fabric.
 
-1. Return to the workspace item list.
-2. Select the **SQL analytics endpoint** item with the same name as your
-   Lakehouse. Alternatively, in the Lakehouse top-right ribbon dropdown,
-   switch to **SQL analytics endpoint**.
-3. Expect a SQL query editor and explorer with schemas/tables.
-4. Refresh the explorer and find the six actual table names from Step 23.
-   Note the schema shown alongside them; use it in your queries.
-5. Select **New SQL query** and paste the following, replacing both
-   angle-bracket placeholders with the actual schema and arrival table name.
-6. Select **Run** in the query editor.
+#### View the completed spatial result
 
-```sql
-SELECT TOP (20) *
-FROM [<schema-shown-in-explorer>].[<actual-arrival-table-name>];
+Approve publication of the owned Results notebook. From the repository root:
+
+```powershell
+.\deploy.ps1 view-results
 ```
 
-Expect a row grid for reached cells with the arrival attributes and WKT geometry.
-Repeat for `origin` or `cells_daily` and check a row count:
+This creates or updates only `<deploymentName> Results`, attached to the
+existing Lakehouse and environment. It verifies saved source/bindings but
+submits **no Spark job**. Repeating publication can replace custom viewer edits.
+Historical active preview jobs must finish before the viewer is changed.
+
+Expect exit `0`, the verified run ID and Results notebook URL.
+The viewer accepts at most 5,000 grid and arrival rows each; it fails explicitly
+instead of truncating larger outputs. Its geometry reader supports the demo's
+2D POINT and single-ring POLYGON output, not arbitrary WKT.
+
+Open that **Results** notebook. Separately approve one interactive paid-compute
+run, then select **Run all**. It reads the verified run's existing tables,
+checks counts and EPSG:4326 geometry, and displays the map below the code cell.
+It never retrieves the credential, writes tables, reruns GeoAnalytics or
+publishes to ArcGIS. Do not select Run all on the simulation notebook.
+
+Look for a north-up map: gray study-grid cells, red reached cells, blue origin.
+Red means reached, not population or vulnerability. This is a local
+equirectangular projection with no external basemap or ArcGIS publication.
+Keep map acceptance incomplete until you have actually viewed it in Fabric.
+A completed background job does not prove visible output.
+
+#### Verify all six SQL counts
+
+1. Return to the workspace and open the **SQL analytics endpoint** with the
+   Lakehouse's name, or switch to it from the Lakehouse ribbon dropdown.
+2. Refresh the explorer. Expand the schema (normally `dbo`) and find the six
+   actual table names from Step 23.
+3. Select **New SQL query**. Replace `<run_id_lowercase>` everywhere below
+   with your run ID in lowercase. If your prefix/schema differs, use the
+   exact table names/schema from the receipt/explorer instead.
+4. Select **Run**. Compare every count with `result.json`.
 
 ```sql
-SELECT COUNT_BIG(*) AS row_count
-FROM [<schema-shown-in-explorer>].[<actual-cells-daily-table-name>];
+SELECT 'cells_daily' AS output_name, COUNT_BIG(*) AS row_count
+FROM [dbo].[zombie_<run_id_lowercase>_cells_daily]
+UNION ALL SELECT 'arrival', COUNT_BIG(*)
+FROM [dbo].[zombie_<run_id_lowercase>_arrival]
+UNION ALL SELECT 'front_daily', COUNT_BIG(*)
+FROM [dbo].[zombie_<run_id_lowercase>_front_daily]
+UNION ALL SELECT 'grid_population_vulnerability', COUNT_BIG(*)
+FROM [dbo].[zombie_<run_id_lowercase>_grid_population_vulnerability]
+UNION ALL SELECT 'origin', COUNT_BIG(*)
+FROM [dbo].[zombie_<run_id_lowercase>_origin]
+UNION ALL SELECT 'vulnerability_summary', COUNT_BIG(*)
+FROM [dbo].[zombie_<run_id_lowercase>_vulnerability_summary];
 ```
 
-Expect the count to match the corresponding Spark count in `result.json`.
-If tables are not visible yet, refresh and wait for metadata synchronization;
-there is no guaranteed synchronization duration. If they remain absent,
-inspect schema/table registration and the
-[SQL endpoint guidance](https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-sql-analytics-endpoint).
-Do not repeatedly rerun the simulation to force SQL synchronization.
+| Output | Validated synthetic default count |
+| ------ | --------------------------------- |
+| `cells_daily` | 3 |
+| `arrival` | 1 |
+| `front_daily` | 3 |
+| `grid_population_vulnerability` | 17 |
+| `origin` | 1 |
+| `vulnerability_summary` | 0 |
 
-This endpoint is read-only over the Lakehouse Delta data. You do not need to
-create an Azure SQL database or install a SQL client for this browser test.
+Zero vulnerability-summary rows is expected and valid for this bounded
+synthetic scenario. These counts do not apply to arbitrary parameterized or
+real-population runs; the receipt is authoritative for your run.
+
+SQL metadata synchronization can take time. Refresh and wait rather than
+rerunning the simulation. If tables remain absent, inspect registration/schema
+and the [SQL endpoint guidance](https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-sql-analytics-endpoint).
+The endpoint is read-only over Delta data; no new SQL database/client is needed.
 
 Next: optionally [Step 25](#step-25-run-the-small-atlanta-real-population-scenario)
 after synthetic verification, or the [acceptance checklist](#acceptance-checklist)
@@ -183,6 +229,8 @@ to finish with real-population validation marked `NOT RUN`.
 Where to be: local PowerShell for submission, then Fabric to verify the new outputs.
 
 This step exercises the upstream demo's external census/SVI enrichment.
+It was **NOT RUN** during end-to-end validation. Skip it to finish the validated
+synthetic Fast Pass; it is a separately approved next experiment.
 It requires the Step 12 public-source network approvals. It is not required
 to prove that the synthetic setup worked.
 
@@ -227,25 +275,30 @@ Before finishing, check each result below:
 * [ ] Fabric finish exits `0` and did not require another Azure deployment.
 * [ ] Fabric workspace contains the expected Lakehouse, environment and notebook.
 * [ ] Status shows runtime `1.3` and the notebook connected to the expected items.
+* [ ] Key Vault public access is Disabled; endpoint activation/approval is Succeeded / Approved.
 * [ ] Secret is stored without exposing its value.
 * [ ] The access check and sample-data run succeed, and `run` exits `0`.
 * [ ] Six output tables and `result.json` are readable with required nonempty outputs.
 * [ ] SQL table previews and row counts match the run summary.
+* [ ] Open Results > Run all displays this run's map in Fabric.
 * [ ] The optional real-population run succeeds, or is recorded as `NOT RUN`.
 
 Keep your checklist and run IDs in your organization's approved storage. Do not post API keys,
 bearer tokens, personal data or customer resource identifiers to public issues.
 Leave any unfinished check unchecked.
 
+**Fast Pass completed successfully** when the mandatory checks above are met.
+Real-population validation may remain **NOT RUN**.
+
 To view completed results, open Fabric rather than repeating setup.
 Repeating Fabric setup republishes the environment and updates the generated
 notebook, which can replace your custom edits.
 
-## Alternate path without the button
+## Alternate CLI foundation path
 
 Skip this section if you followed the guided setup above.
 If you prefer an advanced command-line-only setup, choose it **instead of**
-the Azure button before starting. Its commands are in the optional
+the portal foundation step before starting. Its commands are in the optional
 [technical reference](../deploy/README.md#configure-and-validate).
 It is not a follow-up to a successful deployment.
 

@@ -78,9 +78,9 @@ Continue at [this section in the numbered journey](../01-start-here/manual.md#st
 
 Continue at [this section in the numbered journey](../02-deploy-azure/manual.md#deploy-the-azure-foundation).
 
-### Step 13 Press the blue button and enter the Azure parameters
+### Step 13 Load the private template and enter the Azure parameters
 
-Continue at [this section in the numbered journey](../02-deploy-azure/manual.md#step-13-press-the-blue-button-and-enter-the-azure-parameters).
+Continue at [this section in the numbered journey](../02-deploy-azure/manual.md#step-13-load-the-private-template-and-enter-the-azure-parameters).
 
 ### Step 14 Record Azure success and the handoff outputs
 
@@ -118,9 +118,9 @@ Continue at [this section in the numbered journey](../03-finish-fabric/manual.md
 
 Continue at [this section in the numbered journey](../03-finish-fabric/manual.md#configure-the-esri-key).
 
-### Step 20 Enter the key at the hidden PowerShell prompt
+### Step 20 Securely provide the Esri API key
 
-Continue at [this section in the numbered journey](../03-finish-fabric/manual.md#step-20-enter-the-key-at-the-hidden-powershell-prompt).
+Continue at [this section in the numbered journey](../03-finish-fabric/manual.md#step-20-securely-provide-the-esri-api-key).
 
 ## 6 Prove the small synthetic workload
 
@@ -138,9 +138,9 @@ Continue at [this section in the numbered journey](../04-run-and-verify/manual.m
 
 Continue at [this section in the numbered journey](../04-run-and-verify/manual.md#step-23-open-the-six-tables-and-onelake-receipt).
 
-### Step 24 Verify the SQL analytics endpoint
+### Step 24 View the map and verify the SQL analytics endpoint
 
-Continue at [this section in the numbered journey](../04-run-and-verify/manual.md#step-24-verify-the-sql-analytics-endpoint).
+Continue at [this section in the numbered journey](../04-run-and-verify/manual.md#step-24-view-the-map-and-verify-the-sql-analytics-endpoint).
 
 ### Step 25 Run the small Atlanta real-population scenario
 
@@ -152,7 +152,7 @@ Continue at [this section in the numbered journey](../04-run-and-verify/manual.m
 
 ## Alternate path without the button
 
-Continue at [this section in the numbered journey](../04-run-and-verify/manual.md#alternate-path-without-the-button).
+Continue at [this section in the numbered journey](../04-run-and-verify/manual.md#alternate-cli-foundation-path).
 
 ## Cleanup and troubleshooting
 

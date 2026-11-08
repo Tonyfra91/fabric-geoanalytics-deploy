@@ -163,8 +163,8 @@ Pinned upstream notebook installed locally. Do not add it or generated notebook 
 If it is already present with the correct hash, the message is
 `Pinned demo notebook already present.` This download is local source
 preparation, not a Fabric import. You have not created cloud resources.
-Use `main` to obtain this updated walkthrough and its real-run configuration;
-the blue button still pins the unchanged `v0.1.0` Azure template.
+Use the current checkout for this walkthrough and its compiled private Azure
+template. The old `v0.1.0` button is not the private Fast Pass entry.
 
 Run the offline checks:
 
@@ -261,7 +261,7 @@ become active before continuing. See
 Do not assume a subscription Reader role, successful portal login, or an
 Azure subscription of your own authorizes this deployment.
 If a role is missing, stop and send the administrator request at the end of
-the prerequisite section. The blue button will not repair missing permissions.
+the prerequisite section. Azure deployment will not repair missing permissions.
 
 Next: [Step 05](#step-05-confirm-providers-and-choose-fresh-azure-names).
 
@@ -273,13 +273,18 @@ In PowerShell:
 
 ```powershell
 az provider show --namespace Microsoft.KeyVault --query registrationState --output tsv
-az provider show --namespace Microsoft.Fabric --query registrationState --output tsv
+az provider show --namespace Microsoft.Network --query registrationState --output tsv
 ```
 
 See/expect: each prints `Registered`. If not, ask the Azure administrator to
 open **Subscriptions > your subscription > Resource providers**, search each
 namespace, and register it. The repo's validator does not register providers.
-Wait until both commands print `Registered`.
+Wait until both commands print `Registered`. Only if an administrator approves
+creating a **new** capacity, also check/register `Microsoft.Fabric`:
+
+```powershell
+az provider show --namespace Microsoft.Fabric --query registrationState --output tsv
+```
 
 Choose these names and record them:
 
@@ -461,7 +466,7 @@ Where to be: your approved private channel with the Esri subscription owner.
 3. Ask that owner/Esri representative to provide an **API key authorized for
    that active GeoAnalytics for Fabric subscription**, through your organization's
    approved secret-sharing channel.
-4. Keep the key in an approved secret manager until the hidden prompt at Step 20.
+4. Keep the key in an approved secret manager until the secure Azure field at Step 20.
 
 See/expect: explicit entitlement confirmation and a usable key available to you.
 The authoritative authorization requirement is documented at
@@ -471,11 +476,12 @@ The key-provisioning process depends on your Esri subscription, so ask the
 subscription owner for the correct route. A generic basemap/location-services
 key, ArcGIS Online login or Azure key will not authorize GeoAnalytics.
 If the owner supplies only username/password, ask for the API-key route:
-this accelerator supports a hidden API-key prompt, not password-based auth.
+this accelerator supports an API key supplied through secure ARM input, not password-based auth.
 
 Stop here if the entitlement/key is missing. This is an external prerequisite,
-not something the Azure button creates. No secret should be pasted into the
-portal template, configuration JSON, Git, or a notebook cell.
+not something the Azure foundation creates. Enter the key only in Step 20's
+masked secure deployment field, never template code, configuration JSON, Git,
+Copilot chat, generated files or notebook content.
 
 Next: [Step 12](#step-12-confirm-networking-costs-and-administrator-approvals).
 
@@ -485,12 +491,14 @@ Where to be: your approval conversation with Azure, Fabric and network owners.
 
 Ask your Azure/Fabric/network owners to confirm:
 
-* Public-network Key Vault is permitted for this POC. The template enables
-  public access with RBAC; it does not deploy private endpoints or a VNet.
-* Your computer can reach Microsoft Entra, Azure APIs, Fabric APIs, Key Vault
+* The private-only Key Vault, dedicated VNet/subnet, private endpoint and DNS
+  are permitted. Approved IPv4 ranges do not overlap existing networks.
+  Public Key Vault access remains Disabled.
+* Your computer can reach Microsoft Entra, Azure management APIs, Fabric APIs
   and raw GitHub content.
-* Fabric Spark can reach the vault and the Esri authorization service.
-* For Step 25, Spark can reach the public ArcGIS census/SVI endpoints, including
+* Fabric Spark can reach the vault through its approved managed private endpoint
+  and can reach the Esri authorization service.
+* Only for optional Step 25, Spark can reach the public ArcGIS census/SVI endpoints, including
   `services.arcgis.com` and `services3.arcgis.com`.
 * The selected capacity can run Spark and its owner approves the test workload.
 * Azure Key Vault operations, Fabric compute, optional new capacity, and Esri
@@ -508,7 +516,8 @@ Use this request if you are missing approvals:
 > `<my-work-account>` in tenant `<tenant-guid>` and subscription
 > `<subscription-guid>`. Please confirm or arrange: subscription deployment
 > and dedicated resource-group/Key Vault permissions; vault
-> `roleAssignments/write`; both resource providers registered; permission for
+> `roleAssignments/write`; KeyVault and Network providers registered (Fabric
+> provider only for new capacity); permission for
 > my user to create a workspace and Fabric items; workspace assignment to
 > `<capacity-name/GUID>` with capacity Contributor/Admin permission; effective
 > GeoAnalytics enablement on that capacity; an active Esri GeoAnalytics for
@@ -520,5 +529,5 @@ You may only move to Step 13 when these prerequisites are confirmed.
 Allow time for administrator work; this cannot be guaranteed to complete
 on the day of the test if approvals are missing.
 
-Next: [Step 13](../02-deploy-azure/manual.md#step-13-press-the-blue-button-and-enter-the-azure-parameters).
-**This is when you press the blue button.**
+Next: [Step 13](../02-deploy-azure/manual.md#step-13-load-the-private-template-and-enter-the-azure-parameters).
+**This is when you load the private Azure template.**

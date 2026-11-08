@@ -329,13 +329,44 @@ if ($MyInvocation.InvocationName -ne '.') {
                 }
             }
         }
-        $ExpectedUrl = 'https://raw.githubusercontent.com/Tonyfra91/fabric-geoanalytics-deploy/v0.1.0/deploy/azuredeploy.json'
         foreach ($Path in @('README.md','02-deploy-azure\manual.md')) {
             $Content = Get-Content -LiteralPath (Join-Path $RepositoryRoot $Path) -Raw
-            $Button = [regex]::Match($Content, 'https://portal\.azure\.com/#create/Microsoft\.Template/uri/([^)]+)')
-            if (-not $Button.Success -or [uri]::UnescapeDataString($Button.Groups[1].Value) -cne $ExpectedUrl) {
-                throw "Deployment button is missing or points to the wrong release in $Path."
+            if ($Content -match 'https://portal\.azure\.com/#create/Microsoft\.Template/uri/' -or
+                $Content -notmatch 'Load file' -or $Content -notmatch 'deploy/azuredeploy.json' -or
+                $Content -notmatch 'subscription-scoped' -or $Content -notmatch 'Disabled') {
+                throw "Private checked-out-template Azure entry is missing or an old release button remains in $Path."
             }
+        }
+        $RunGuide = Get-Content -LiteralPath (Join-Path $RepositoryRoot '04-run-and-verify\manual.md') -Raw
+        foreach ($Output in @(
+            @{name='cells_daily';rows=3},@{name='arrival';rows=1},@{name='front_daily';rows=3},
+            @{name='grid_population_vulnerability';rows=17},@{name='origin';rows=1},
+            @{name='vulnerability_summary';rows=0})) {
+            if ($RunGuide -notmatch [regex]::Escape("[dbo].[zombie_<run_id_lowercase>_$($Output.name)]") -or
+                $RunGuide -notmatch "\| ``$($Output.name)`` \| $($Output.rows) \|") {
+                throw "Six-table SQL query/reference count missing for $($Output.name)."
+            }
+        }
+        if ([regex]::Matches($RunGuide, 'COUNT_BIG\(\*\)').Count -ne 6 -or
+            $RunGuide -notmatch 'no Spark job' -or $RunGuide -notmatch 'Open Results > Run all' -or
+            $RunGuide -notmatch 'arbitrary parameterized' -or $RunGuide -notmatch 'NOT RUN') {
+            throw 'Map, publication-only, SQL or bounded-validation guidance is incomplete.'
+        }
+        $CustomerPaths = @('README.md','deploy\README.md','01-start-here','02-deploy-azure','03-finish-fabric','04-run-and-verify','05-next-steps')
+        foreach ($Path in $CustomerPaths) {
+            foreach ($File in Get-ChildItem -LiteralPath (Join-Path $RepositoryRoot $Path) -Filter '*.md' -File -Recurse) {
+                $Content = Get-Content -LiteralPath $File.FullName -Raw
+                if ($Content -match 'hidden (?:terminal )?prompt|public-network Key Vault|public access with RBAC|ipywidgets|getpass') {
+                    throw "Retired secret/network experiment remains in customer guidance: $($File.Name)."
+                }
+            }
+        }
+        if (Test-Path -LiteralPath (Join-Path $RepositoryRoot 'deploy\fabric\notebook\setup-esri-api-key.ipynb')) {
+            throw 'Retired setup notebook must not remain among deployable product definitions.'
+        }
+        $Evidence = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'engineering\validation-notes.md') -Raw
+        foreach ($Finding in @('ForbiddenByConnection','Password-widget','getpass','Cloud Shell','Secure ARM','LIVE VALIDATED','REPOSITORY TESTED ONLY')) {
+            if ($Evidence -notmatch [regex]::Escape($Finding)) { throw "Engineering evidence missing: $Finding" }
         }
         $SkillPath = Join-Path $RepositoryRoot '.github\skills\fabric-geoanalytics-fast-pass\SKILL.md'
         $Skill = Get-Content -LiteralPath $SkillPath -Raw
@@ -488,7 +519,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         Write-Host 'PASS: 16 Fast Pass checkpoint cards and 25 ordered, located manual steps with linked next actions.'
         Write-Host 'PASS: Five root stage folders, route boundaries, Copilot references and legacy step headings.'
         Write-Host 'PASS: Compact five-stage SVG, matching draw.io labels, numbered folder names and ordered connectors.'
-        Write-Host 'PASS: Portal scope, handoff version, opt-in capacity, secret boundaries, documentation links, and release button URLs.'
+        Write-Host 'PASS: Private template entry, handoff, opt-in capacity, secret boundaries, map/SQL guidance, engineering evidence and documentation links.'
         exit 0
     }
     catch {

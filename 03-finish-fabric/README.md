@@ -13,7 +13,8 @@ This step uses the Azure resources you just created.
 
 Use VS Code Chat and your local PowerShell 7 terminal at the repository root.
 Open the Fabric browser tab when instructed to inspect the created items.
-Enter the Esri key only in your own visible terminal's hidden prompt.
+Enter the Esri key only in Azure Custom deployment's secure parameter field,
+privately and without Copilot inspecting that session.
 
 ### Do
 
@@ -24,15 +25,17 @@ Continue the route you selected:
 
 Review the settings file and confirm the five permissions and licensing
 approvals. Once the checks pass, approve Fabric setup.
-When prompted, run the key-entry command yourself and enter the key in the
-terminal. Keep it out of Chat and configuration files.
+Approve the exact Key Vault managed endpoint in Azure if requested, then resume.
+Use the separate secure ARM credential step. Keep the key out of Chat,
+configuration, generated parameters, state, notebooks and logs.
 
 ### See
 
 Your Fabric workspace contains a Lakehouse, environment and notebook.
 The status command reports `Configured` and runtime `1.3`, with the notebook
-connected to the expected items. The key-entry command confirms that the
-key was stored.
+connected to the expected items. Endpoint activation/approval is **Succeeded / Approved**.
+The secure deployment succeeds and `verify-secret` confirms enabled/current metadata
+without retrieving the key.
 You have not run the model yet. The next step checks that Fabric can use
 the key before running the simulation.
 

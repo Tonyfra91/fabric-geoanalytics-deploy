@@ -1,6 +1,6 @@
 ---
 name: fabric-geoanalytics-fast-pass
-description: "Use when explicitly asked to start or resume Copilot Fast Pass for this repo's Azure-button and Fabric GeoAnalytics accelerator. Guide local preparation, approved Fabric setup, secret-safe manual handoff, bounded runs and evidence checks; stop at cloud and compute approval checkpoints."
+description: "Use when asked to start or resume Fabric GeoAnalytics Fast Pass; guide secure Azure input, approved setup, bounded runs, map and SQL checks - Brought to you by Tonyfra91/fabric-geoanalytics-deploy"
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -52,15 +52,17 @@ ArcGIS publication, semantic models, or production certification.
   Do not treat tool approval or “do all of it” as permission for every cloud stage.
 * Obtain separate explicit approvals for Fabric creation/update, the synthetic
   run, and the real-population run. State exact target, command, inputs and costs.
-* The user presses the unchanged Azure button and selects Create after
-  prerequisites and parameter review. Do not click Create, invoke bare
-  `deploy`, run CLI Azure provisioning, or modify Bicep/template/button URLs.
+* The user loads the checkout's compiled private template in Azure Custom
+  deployment and selects Create after prerequisites and parameter review.
+  Do not click Create, invoke bare `deploy`, run CLI Azure provisioning,
+  change templates or use the old public-access `v0.1.0` button.
 * Never request or inspect passwords, MFA/device codes, bearer tokens, API keys,
   clipboard contents or secret values. Never run token-output commands,
   `az keyvault secret show`, raw secret GETs, or secret-entry tools.
-* Never run `configure-secret` yourself. The user runs it in their visible
-  terminal and enters the key at the hidden prompt, outside agent tools/chat.
-  Ask only whether its documented success message appeared.
+* `configure-secret` prints nonsecret secure-UI instructions; it never accepts
+  a credential. The customer enters the key only in Azure's masked deployment
+  parameter field and selects Create. Never inspect, screenshot or automate
+  that entry session. `verify-secret` reads ARM metadata only.
 * Do not set all confirmations true by inference. Map each flag to explicit
   administrator/customer confirmation; reads do not prove permission/licensing.
 * Check every command's exit code and relevant output. Stop on errors, failed/
@@ -69,8 +71,9 @@ ArcGIS publication, semantic models, or production certification.
 * Keep Manual permissions enabled. Skill instructions are not security enforcement.
   Do not bypass policy, install software without approval, elevate privileges,
   grant roles, register providers, or retag/adopt unrelated resources.
-* Do not change accelerator source to bypass failures. Limit file edits to
-  reviewed nonsecret customer configuration; never overwrite an existing config.
+* Do not change source to suppress failures. Fix proven Fast Pass blockers
+  narrowly with regression tests and resume the same deployment. Never
+  overwrite customer configuration or put a credential in it.
 * Never delete resources, alter an existing capacity's lifecycle/SKU, discard
   user changes, commit/push local configuration/state, or publish customer evidence.
 * Do not automatically retry submissions. A timeout/stop can leave a live job;
@@ -102,13 +105,16 @@ ArcGIS publication, semantic models, or production certification.
 Stop at `BLOCKED` or `AWAITING YOU` for any unresolved requirement.
 When ready, proceed to the user-controlled Azure step, not a cloud tool call.
 
-## Phase 2 Guide the Azure button and verify its handoff
+## Phase 2 Guide the private Azure template and verify its handoff
 
 1. Show the exact portal parameter table based on verified values and the user's
    signed-in object ID. Explain subscription deployment record name versus
    template ownership `deploymentName`.
-2. Direct the user to README's unchanged Deploy to Azure button and manual
-   Steps 13-14. The user signs in, enters fields, reviews costs and selects Create.
+2. Guide manual Steps 13-14: Azure Custom deployment > Build your own template
+   in the editor > Load file, using the checkout's `deploy\azuredeploy.json`.
+   The user signs in, reviews the private subscription template/fields/costs
+   and selects Create. This revised entry UI awaits new-customer validation;
+   do not treat local template checks as live UI evidence.
 3. Wait for the user to report success and the subscription deployment record name.
    Read the actual deployment metadata/outputs. Verify success, version, identity,
    subscription, vault outputs and capacity choice through the existing helpers.
@@ -133,6 +139,9 @@ Stop for the Fabric finish approval after validation exits 0.
 3. Wait for environment publication/import and check exit code and documented
    configured success message. On failure, explain the specific error and
    retained milestones; do not rerun automatically or redeploy Azure.
+   If endpoint approval is pending, guide the exact Azure Key Vault connection
+   approval in manual Step 18, then network-only resume. Require activation
+   Succeeded and approval Approved; never modify unrelated endpoints.
 4. Run `.\deploy.ps1 status`. Verify Configured stage, Runtime 1.3 and notebook
    bindings. Provide workspace/item names for the manual Step 19 UI inspection.
 5. Ask the user to inspect the created Fabric items; record that evidence separately.
@@ -141,12 +150,17 @@ Stop for the user's secret-entry handoff.
 
 ## Phase 4 Hand secret entry to the user
 
-1. Tell the user to run `.\deploy.ps1 configure-secret` themselves in the visible
-   PowerShell 7 terminal. Do not execute it through a tool.
-2. Explain the exact `Esri GeoAnalytics API key (hidden)` prompt and documented
-   success text. The key goes only into that prompt, never chat or files.
-3. Wait for the user to confirm success, not disclose the key.
-   For failure, use only redacted errors and metadata/access/network guidance.
+1. Run or show `.\deploy.ps1 configure-secret` for nonsecret target/template
+   instructions. Do not rerun Azure foundation or Fabric finish.
+2. Guide manual Step 20: load the nonsecret credential template in Azure Custom
+   deployment, select the existing group/vault, and let the customer enter the
+   key only in the masked secure parameter field. The customer reviews the
+   one-secret deployment and selects Create. No deployment debug logging,
+   parameter-file exports, public access changes or extra infrastructure.
+3. Wait for Deployment succeeded, never the key. Run
+   `.\deploy.ps1 verify-secret` and require enabled/current ARM metadata.
+   This is not runtime retrieval or GeoAnalytics authorization. For failure,
+   use only redacted categories and nonsecret deployment/metadata checks.
 4. If a key is exposed, do not repeat it. Stop and direct its owner to revoke/
    rotate it; do not promise to erase an exposure by deleting chat text.
 
@@ -166,9 +180,14 @@ Stop for synthetic compute approval; secret success is not authorization to run.
    Supply actual run/table names, counts and receipt path.
    Required origin, grid and daily-state outputs must be nonempty.
    Do not fail a valid empty synthetic vulnerability summary.
-5. Guide the user through manual Steps 23-24 for Lakehouse/receipt and SQL checks.
-   Do not claim SQL/UI verification without observed results or user confirmation.
-6. Offer the real-population stage only after synthetic verification. Display
+5. Guide manual Steps 23-24: Lakehouse/receipt, then separately approved
+   `.\deploy.ps1 view-results` publication only. It submits no Spark job.
+   Obtain separate interactive compute approval: Open Results > Run all > View map.
+   Never run the simulation notebook to obtain a map. Finally supply the
+   six-table SQL count query with actual names and compare every receipt count.
+   Do not claim map/SQL acceptance without observed results or user confirmation.
+6. Real-population execution is optional and was NOT RUN in dogfood acceptance.
+   Offer it only as a next experiment after synthetic/map/SQL verification. Display
    `real-run.json` with Atlanta coordinates, three days, 10 km, H3 6, real
    population and overwrite false. Confirm external-source readiness.
 7. Obtain separate explicit approval for one real-population run, then execute
@@ -191,3 +210,5 @@ A `lastJobUri` may still be active; inspect it without resubmitting.
 Re-establish current-session approval before another mutation or compute stage.
 Never edit state to skip milestones. Guide separately approved cleanup to
 the manual reference; do not execute deletion.
+
+> Brought to you by Tonyfra91/fabric-geoanalytics-deploy

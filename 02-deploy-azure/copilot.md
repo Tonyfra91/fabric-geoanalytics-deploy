@@ -9,7 +9,7 @@ ms.date: 2026-11-04
 Run terminal commands from the main repository folder containing `deploy.ps1`,
 not from this numbered subfolder.
 
-## FP09 Review parameters and press the unchanged blue button
+## FP09 Review parameters and load the private Azure template
 
 | Checkpoint | Instruction                                                                                                                                  |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -20,13 +20,15 @@ not from this numbered subfolder.
 
 Copilot should produce a field-by-field table using your approved values:
 subscription, ownership `deploymentName`, region, new group, unique vault,
-executing user's `userObjectId`, and the capacity choice.
+executing user's `userObjectId`, dedicated private-network names/ranges, and the capacity choice.
 An existing capacity remains the default. Review it against your private note.
 
-You now open the [repo README](../README.md), press its **Deploy to Azure**
-button, enter those fields, and select **Review + create > Create**.
+Open Azure **Custom deployment > Build your own template in the editor > Load file**
+and load the checkout's compiled `deploy\azuredeploy.json`. Save, enter the reviewed
+fields, and select **Review + create > Create** yourself. Do not use the old
+`v0.1.0` release button or change its immutable tag.
 The complete field/screen reference is
-[manual Step 13](./manual.md#step-13-press-the-blue-button-and-enter-the-azure-parameters).
+[manual Step 13](./manual.md#step-13-load-the-private-template-and-enter-the-azure-parameters).
 Copilot must not press Create for you or substitute CLI Azure deployment.
 
 See/expect: Azure **Custom deployment**, then deployment progress.

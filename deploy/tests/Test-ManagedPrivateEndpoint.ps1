@@ -76,6 +76,9 @@ if ($MyInvocation.InvocationName -ne '.') {
             function script:Invoke-ServiceRequest {
                 param([string]$Uri, [string]$Method='GET', [object]$Body, [string]$Audience='https://api.fabric.microsoft.com')
                 $script:Calls.Add(@{uri=$Uri;method=$Method;body=$Body;audience=$Audience})
+                if ($Uri -eq 'https://api.fabric.microsoft.com/v1/capacities' -and $Method -eq 'GET') {
+                    return @{StatusCode=200;Data=@{value=@(@{id=$script:Manifest.capacityId;displayName='Offline capacity';sku='F2';state='Active'})}}
+                }
                 if ($Uri -eq "https://management.azure.com$($script:Manifest.resources.keyVault.id)?api-version=2025-05-01" -and $Method -eq 'GET') {
                     return @{StatusCode=200;Data=@{id=$script:Manifest.resources.keyVault.id;properties=@{publicNetworkAccess=$script:PublicNetworkAccess}}}
                 }

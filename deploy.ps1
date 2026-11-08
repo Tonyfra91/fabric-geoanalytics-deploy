@@ -4,7 +4,7 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    One-Command Deployment for the Fabric zombie outbreak POC.
+Lifecycle commands for the Fabric GeoAnalytics Fast Pass.
 .DESCRIPTION
     Separates read-only validation, provisioning, secret setup, and execution.
 .PARAMETER Command
@@ -24,7 +24,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('help', 'validate', 'deploy', 'configure-network', 'configure-secret', 'run', 'status', 'remove')]
+    [ValidateSet('help', 'validate', 'deploy', 'configure-network', 'configure-secret', 'verify-secret', 'run', 'view-results', 'status', 'remove')]
     [string]$Command = 'help',
     [string]$ConfigPath = (Join-Path $PSScriptRoot 'deploy\config\customer.json'),
     [string]$ParametersPath,
@@ -47,11 +47,14 @@ Bicep-led deployment automation for Azure and Microsoft Fabric resources
   .\deploy.ps1 deploy -AzureDeploymentName <portal-deployment-name>
   .\deploy.ps1 configure-network
   .\deploy.ps1 configure-secret
+  .\deploy.ps1 verify-secret
   .\deploy.ps1 run [-ParametersPath <file>]
+  .\deploy.ps1 view-results
   .\deploy.ps1 status
 
 Copy deploy\config\customer.sample.json to customer.json first.
 Deployment never executes a notebook. Removal is intentionally not automated.
+view-results prepares the Results notebook only; open it and Run all in Fabric.
 '@
         }
         elseif ($Command -eq 'remove') {
@@ -72,7 +75,12 @@ Deployment never executes a notebook. Removal is intentionally not automated.
                 'deploy' { Invoke-Deployment -Config $Config -WhatIf:$WhatIf -AzureDeploymentName $AzureDeploymentName }
                 'configure-network' { Set-DeploymentNetwork -Config $Config }
                 'configure-secret' { Set-GeoAnalyticsSecret -Config $Config }
+                'verify-secret' {
+                    Test-GeoAnalyticsSecret -Config $Config
+                    Write-Host 'Secret metadata verified; runtime access is checked during run.'
+                }
                 'run' { Invoke-Simulation -Config $Config -ParametersPath $ParametersPath }
+                'view-results' { Publish-ResultsNotebook -Config $Config }
                 'status' { Get-DeploymentStatus -Config $Config | ConvertTo-Json -Depth 20 | Out-Host }
             }
         }

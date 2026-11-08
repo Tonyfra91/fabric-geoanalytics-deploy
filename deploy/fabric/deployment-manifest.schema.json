@@ -23,6 +23,20 @@
     "lakehouseId": { "type": "string", "format": "uuid" },
     "environmentId": { "type": "string", "format": "uuid" },
     "notebookId": { "type": "string", "format": "uuid" },
+    "resultsNotebookId": { "type": "string", "format": "uuid" },
+    "lastPreviewJobUri": { "type": "string", "pattern": "^https://api\\.fabric\\.microsoft\\.com/v1/" },
+    "lastPreviewResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "grid_rows", "arrival_rows", "origin_rows", "svgPath"],
+      "properties": {
+        "run_id": { "type": "string" },
+        "grid_rows": { "type": "integer", "minimum": 1, "maximum": 5000 },
+        "arrival_rows": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "origin_rows": { "const": 1 },
+        "svgPath": { "type": "string" }
+      }
+    },
     "managedPrivateEndpoint": {
       "type": "object",
       "additionalProperties": false,

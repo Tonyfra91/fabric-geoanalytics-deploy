@@ -140,6 +140,24 @@ function Get-ServiceCollection {
     }
 }
 
+function Get-ActiveFabricCapacity {
+    <#
+    .SYNOPSIS
+        Verifies the selected capacity without changing its lifecycle.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param([Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Capacities, [Parameter(Mandatory)][string]$CapacityId)
+    $Matches = @($Capacities | Where-Object id -eq $CapacityId)
+    if ($Matches.Count -ne 1) { throw "Selected Fabric capacity $CapacityId is not uniquely visible to this user." }
+    $Capacity = $Matches[0]
+    if ($Capacity.state -ne 'Active') {
+        throw "Fabric capacity '$($Capacity.displayName)' ($CapacityId) is not active (state=$($Capacity.state)). Ask its owner to resume it in Azure, then retry status. Resuming incurs charges; do not recreate Fabric assets."
+    }
+    if ($Capacity.sku -notmatch '^F\d+$') { throw 'Selected Fabric capacity must use a supported F SKU.' }
+    return $Capacity
+}
+
 function Resolve-FabricOperationUri {
     <#
     .SYNOPSIS
@@ -239,11 +257,13 @@ function Test-Prerequisite {
         & $Add 'Azure authentication' 'Fail' $_.Exception.Message
         return $Checks.ToArray()
     }
-    foreach ($Provider in @('Microsoft.KeyVault', 'Microsoft.Fabric')) {
+    $Providers = @('Microsoft.KeyVault', 'Microsoft.Network')
+    if ($Config.capacity.mode -eq 'new') { $Providers += 'Microsoft.Fabric' }
+    foreach ($Provider in $Providers) {
         try {
             $Registration = Invoke-AzJson @('provider','show','--namespace',$Provider,'--subscription',$Config.subscriptionId)
             if ($Registration.registrationState -ne 'Registered') { throw "Register $Provider manually; validate will not change provider registration." }
-            if ($Provider -eq 'Microsoft.KeyVault' -or $Config.capacity.mode -eq 'new') {
+            if ($Provider -in @('Microsoft.KeyVault','Microsoft.Fabric')) {
                 $ResourceType = if ($Provider -eq 'Microsoft.KeyVault') {'vaults'} else {'capacities'}
                 $Type = $Registration.resourceTypes | Where-Object resourceType -eq $ResourceType
                 $Location = $Config.location -replace '\s',''
@@ -251,7 +271,7 @@ function Test-Prerequisite {
                     throw "Region $($Config.location) is not advertised for $Provider/$ResourceType."
                 }
             }
-            & $Add $Provider 'Pass' 'Provider registered; required Azure region checked.'
+            & $Add $Provider 'Pass' 'Provider registered; applicable Azure region checks passed.'
         } catch { & $Add $Provider 'Fail' $_.Exception.Message }
     }
     try {
@@ -290,12 +310,9 @@ function Test-Prerequisite {
     try {
         $Capacities = @(Get-ServiceCollection 'https://api.fabric.microsoft.com/v1/capacities')
         if ($Config.capacity.mode -eq 'existing') {
-            $Capacity = @($Capacities | Where-Object id -eq $Config.capacity.id)
-            if ($Capacity.Count -ne 1 -or $Capacity[0].state -ne 'Active' -or $Capacity[0].sku -notmatch '^F\d+$') {
-                throw 'Selected active F capacity is not accessible through Fabric APIs.'
-            }
-            if (($Capacity[0].region -replace '\s','').ToLowerInvariant() -ne $Config.location) { throw 'Selected capacity region differs from configuration.' }
-            & $Add 'Fabric capacity' 'Pass' "$($Capacity[0].displayName), $($Capacity[0].sku), Active. Headroom is not proven."
+            $Capacity = Get-ActiveFabricCapacity -Capacities $Capacities -CapacityId $Config.capacity.id
+            if (($Capacity.region -replace '\s','').ToLowerInvariant() -ne $Config.location) { throw 'Selected capacity region differs from configuration.' }
+            & $Add 'Fabric capacity' 'Pass' "$($Capacity.displayName), $($Capacity.sku), Active. Headroom is not proven."
         } else {
             $Existing = @($Capacities | Where-Object displayName -eq $Config.capacity.name)
             if ($Existing.Count -gt 1) { throw 'Ambiguous new capacity name.' }
@@ -347,4 +364,4 @@ function Test-Prerequisite {
 
 . (Join-Path $PSScriptRoot 'Notebook.ps1')
 . (Join-Path $PSScriptRoot 'Lifecycle.ps1')
-Export-ModuleMember -Function Read-CustomerConfig, Test-Prerequisite, Invoke-Deployment, Set-DeploymentNetwork, Set-GeoAnalyticsSecret, Invoke-Simulation, Get-DeploymentStatus, New-DeployableNotebook, New-PortalCustomerConfig
+Export-ModuleMember -Function Read-CustomerConfig, Test-Prerequisite, Invoke-Deployment, Set-DeploymentNetwork, Set-GeoAnalyticsSecret, Test-GeoAnalyticsSecret, Invoke-Simulation, Publish-ResultsNotebook, Get-DeploymentStatus, New-DeployableNotebook, New-ResultsNotebook, New-PortalCustomerConfig

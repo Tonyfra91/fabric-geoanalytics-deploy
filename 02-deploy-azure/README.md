@@ -7,7 +7,7 @@ ms.date: 2026-11-04
 ## 02 Deploy Azure
 
 Complete [01 Start here](../01-start-here/README.md) first.
-You are now ready to use the blue button.
+You are now ready to load the current compiled private template in Azure.
 
 ### Where
 
@@ -21,12 +21,15 @@ Continue the route you selected:
 * [Copilot Fast Pass: FP09](./copilot.md)
 * [Manual alternative: Steps 13-14](./manual.md)
 
-You enter the reviewed parameters, review costs and select **Create**.
+Load the checkout's compiled template in **Custom deployment**, enter the reviewed
+parameters, review costs and select **Create**.
 Copilot does not press Create for you.
 
 ### See
 
-Azure reports **Deployment succeeded**. The guide shows you where to find
+Azure reports **Deployment succeeded**, with private-only Key Vault, VNet/subnet,
+private endpoint and private DNS. Public vault access remains **Disabled**.
+The guide shows you where to find
 the deployment name and Key Vault details to save for the next step.
 Use the name shown on the deployment page; it may differ from the
 `deploymentName` you entered in the form.

@@ -91,47 +91,46 @@ as well as the command results.
 
 ## FP12 Enter the Esri key yourself outside Copilot tools
 
+Use Azure's secure deployment parameter field to store the credential in the
+existing private-only vault. No private connection from your computer or
+Cloud Shell is required for this step. Do not rerun Azure or Fabric finish.
+
 | Checkpoint | Instruction                                                                                                            |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Where      | Your visible PowerShell 7 terminal, never Chat                                                                         |
-| Do         | You run `configure-secret` and enter the key at its hidden prompt                                                      |
-| See        | `Secret stored; metadata access verified...` without the key being exposed                                             |
+| Where      | Azure portal Custom deployment, secure parameter field only                                                          |
+| Do         | Run `configure-secret` for the template path and target; you enter the key and select Create in Azure                 |
+| See        | Deployment succeeded, followed by `verify-secret` metadata confirmation                                               |
 | Next       | [FP13](../04-run-and-verify/copilot.md#fp13-separately-approve-the-synthetic-run) after reporting success, not the key |
 
-Copilot must pause here and give you this command to run in your visible
-PowerShell 7 terminal:
+This command prints only nonsecret instructions and never prompts for a key:
 
 ```powershell
 .\deploy.ps1 configure-secret
 ```
 
-**You run it. Copilot must not run this interactive secret-entry command
-through an agent tool.**
+Follow [manual Step 20](./manual.md#step-20-securely-provide-the-esri-api-key):
+load the nonsecret template, select the existing subscription/resource group
+and vault, then enter the key only in the masked `geoAnalyticsApiKey` field.
+You review and select **Create**. Copilot must not inspect or automate that
+credential-entry session. Stop if the field is not masked or the review shows
+resources other than the one secret. Never put the key into the template editor,
+chat, parameters files, configuration, or notebook code.
 
-See/expect:
+After you report **Deployment succeeded**, Copilot can run:
 
-```text
-Esri GeoAnalytics API key (hidden):
+```powershell
+.\deploy.ps1 verify-secret
 ```
 
-Paste/type the authorized Esri key at that terminal prompt and press Enter.
-Never paste it into Copilot chat, an attached file, configuration JSON, a
-notebook cell, or a browser form.
 Expect:
 
 ```text
-Secret stored; metadata access verified for the interactive user. Runtime access is checked during run.
+Secret metadata verified; runtime access is checked during run.
 ```
 
-Tell Copilot only:
-
-```text
-configure-secret completed with the Secret stored message. No key is in chat.
-Proceed to the synthetic-run approval checkpoint, not to execution yet.
-```
-
-If the command failed, provide only the redacted error. Follow
-[manual Step 20](./manual.md#step-20-enter-the-key-at-the-hidden-powershell-prompt).
+This checks enabled/current metadata through ARM without retrieving the value.
+Next is the synthetic-run approval checkpoint, not automatic execution.
+For failure, provide only a redacted category and deployment status.
 Copilot must never request `az keyvault secret show`, raw secret GETs, clipboard
 contents, or token output to diagnose this.
 If a key was exposed in chat, stop and arrange revocation/rotation with its owner;

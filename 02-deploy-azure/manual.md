@@ -1,6 +1,6 @@
 ---
 title: 02 Deploy Azure - Manual walkthrough
-description: Use the Azure button and save the deployment details needed for Fabric setup.
+description: Load the current private Azure template and save the Fabric handoff details.
 ms.date: 2026-11-04
 ---
 
@@ -11,18 +11,18 @@ not from this numbered subfolder.
 
 ## Deploy the Azure foundation
 
-### Step 13 Press the blue button and enter the Azure parameters
+### Step 13 Load the private template and enter the Azure parameters
 
-Where to be: this guide's button, then Azure portal's Custom deployment form.
+Where to be: Azure portal's Custom deployment template editor.
 
 Why now: your access, names, capacity, licensing and network approvals are
-confirmed. The button creates the Azure foundation, not the spatial results.
+confirmed. This creates the private Azure foundation, not the spatial results.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FTonyfra91%2Ffabric-geoanalytics-deploy%2Fv0.1.0%2Fdeploy%2Fazuredeploy.json)
-
-1. Select **Deploy to Azure** above or on the repository's main README.
-2. Expect Azure portal to open a **Custom deployment** template form. If asked
-   to sign in, use the same Step 03 account. Do not build/upload another template.
+1. In Azure portal, search **Deploy a custom template** and open **Custom deployment**.
+2. Select **Build your own template in the editor > Load file**, select the
+   checked-out [deploy/azuredeploy.json](../deploy/azuredeploy.json), then **Save**.
+   Use the compiled JSON, not Bicep or the credential template. Sign in with the
+   same Step 03 account. Do not use the old public-access `v0.1.0` button.
 3. Select your approved subscription. This is a **subscription-scoped**
    deployment; the template creates its own resource group.
 4. Fill the template fields using the table below. Azure may display camelCase
@@ -44,6 +44,13 @@ confirmed. The button creates the Azure foundation, not the spatial results.
 | `capacityName`           | Leave the optional value null/unset; do not type an existing capacity's name |
 | `capacitySku`            | Leave default `F2`; ignored when `shouldCreateCapacity=false`                |
 | `capacityAdministrators` | Leave the empty JSON array `[]`; do not enter the Esri key here              |
+| `virtualNetworkName` | Keep derived `vnet-<deploymentName>` or use an approved dedicated name |
+| `virtualNetworkAddressPrefix` | Approved nonoverlapping IPv4 range; default `10.0.0.0/16` |
+| `privateEndpointSubnetName` | Dedicated subnet; default `snet-private-endpoints` |
+| `privateEndpointSubnetPrefix` | Subnet within that range; default `10.0.0.0/24` |
+| `privateEndpointName` | Keep derived `pe-<keyVaultName>` |
+| `privateEndpointNetworkInterfaceName` | Keep derived `nic-<privateEndpointName>` |
+| `privateDnsLinkName` | Keep derived `<virtualNetworkName>-vault` |
 
 Do not manually type the literal string `"null"` for a nullable value.
 Do not enter your email, application/client ID, or subscription ID in `userObjectId`.
@@ -57,16 +64,18 @@ capacity access. New-capacity creation does not bypass Fabric/Esri prerequisites
 Do not use this option to adopt or change existing customer capacity.
 
 See/expect: Azure deployment starts. The resources are a dedicated group,
-RBAC-enabled Key Vault, and Key Vault Secrets Officer assignment to your user,
+private-only RBAC-enabled Key Vault, dedicated VNet/subnet, vault private endpoint,
+private DNS integration, and Key Vault Secrets Officer assignment to your user,
 plus new capacity only if opted in.
 No Esri key is created or accepted, and no notebook is executed.
 
 > [!NOTE]
-> The unchanged button uses the released `v0.1.0` template. The current local
-> Bicep and generated template add a private-only Key Vault network foundation
-> for a future release. See the [private foundation reference](../deploy/README.md#private-key-vault-foundation)
-> for its additional parameters and remaining Fabric/secret-setup stages.
-> Do not rerun Azure deployment over an existing manually validated foundation.
+> Key Vault public access stays **Disabled**. The Azure private endpoint does not
+> connect your computer or Fabric automatically; Stage 3 establishes the Fabric
+> managed endpoint. The revised template-selection UI is repository-tested
+> guidance awaiting new-customer validation. Stop if the form is not
+> subscription-scoped. Never redeploy an existing validated foundation just to
+> change the entry UI.
 
 If review/deployment reports invalid parameters, permissions, policy, name
 conflicts or quota, stop and inspect the error. Do not repeatedly click Create
@@ -87,6 +96,9 @@ Where to be: Azure subscription deployment Overview/Outputs, then local PowerShe
    `*.vault.azure.net/` endpoint, and `keyVaultId` belongs to your subscription,
    group and vault.
 5. If you created capacity, verify `capacityResourceId` refers to that new capacity.
+6. Verify `virtualNetworkId`, `keyVaultPrivateEndpointId` and `keyVaultPrivateDnsZoneId`
+   refer to the expected dedicated resources. In Key Vault **Networking**, confirm
+   public access is **Disabled**. Review its Azure private endpoint connection.
 
 If you closed the deployment page: Azure search **Subscriptions > your
 subscription > Deployments > select this deployment > Outputs**.

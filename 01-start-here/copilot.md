@@ -31,10 +31,10 @@ not Sean's original map or optional ArcGIS publication. See
 | Copilot does                                                         | You do                                                             |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Check versions, repo state, account metadata and accessible capacity | Install/approve missing software and complete sign-in/MFA          |
-| Prepare a nonsecret portal parameter table                           | Review the table, press the blue button and select Create          |
+| Prepare a nonsecret portal parameter table                           | Load the private compiled template, review values and select Create |
 | Read successful Azure deployment state and prepare configuration     | Confirm the five real prerequisite approvals and review edits      |
 | Run validation and the approved Fabric finish command                | Approve creation/update of Fabric items                            |
-| Verify metadata and run approved preflight/simulation jobs           | Enter the Esri key in a hidden terminal prompt and approve compute |
+| Verify metadata and run approved preflight/simulation jobs           | Enter the Esri key privately in Azure's secure field and approve compute |
 | Extract actual run/table names and explain SQL checks                | Inspect Fabric UI and confirm Lakehouse/SQL visibility             |
 
 Keep **Manual permissions** enabled and review each command before approving it.
@@ -67,7 +67,8 @@ Check that you have, or know whom to ask for, the following:
 * A GitHub account with approved Copilot access and available usage allowance
 * Your work/school Azure/Fabric deployment user, tenant GUID and subscription GUID
 * Approved subscription deployment and vault role-assignment permissions
-* Registered `Microsoft.KeyVault` and `Microsoft.Fabric` providers
+* Registered `Microsoft.KeyVault` and `Microsoft.Network` providers;
+  `Microsoft.Fabric` only for explicitly approved new-capacity creation
 * Permission to create a dedicated Fabric workspace and Fabric items
 * An approved active F capacity, its Fabric GUID/region, and assignment rights
 * Effective **ArcGIS GeoAnalytics for Fabric Runtime** enablement
@@ -146,8 +147,8 @@ See/expect: Explorer shows `README.md`, `deploy.ps1`, `Initialize-Experience.ps1
 Open the **repository root**, not `deploy`, the original zombie-demo repo,
 or a folder containing multiple unrelated projects.
 
-This uses current `main`, which contains Fast Pass. The older `v0.1.0` tag
-does not contain the skill; its immutable Azure template is still used by the button.
+This uses the current checkout's Fast Pass and private compiled template.
+The older `v0.1.0` tag does not contain the skill or private foundation.
 If a clone already exists, open it, inspect its Git status, and update a clean
 checkout deliberately. Do not reset/discard another person's changes.
 If **Git: Clone** is missing, fix Git installation and restart VS Code.
@@ -289,7 +290,7 @@ If discovery/attachment remains unavailable, stop and use the manual guide.
 | Where      | VS Code Chat/tool approvals; use the terminal only for your sign-in                                                             |
 | Do         | Review checks and supply requested nonsecret values/real confirmations                                                          |
 | See        | Preparation is verified or clearly blocked; no cloud writes occurred                                                            |
-| Next       | [FP09](../02-deploy-azure/copilot.md#fp09-review-parameters-and-press-the-unchanged-blue-button) only when preparation is ready |
+| Next | [FP09](../02-deploy-azure/copilot.md#fp09-review-parameters-and-load-the-private-azure-template) only when preparation is ready |
 
 Copilot checks your tools, the downloaded files and the deployment template.
 It also runs the repository's local checks. Review each requested command

@@ -103,4 +103,78 @@ if not isinstance(OVERWRITE, bool) or not isinstance(CHECK_ONLY, bool):
     }
     return $Notebook
 }
+function New-ResultsNotebook {
+    <#
+    .SYNOPSIS
+        Creates a bounded, credential-free viewer for an already verified run.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory)][hashtable]$Manifest,
+        [Parameter(Mandatory)][string]$LakehouseName
+    )
+    $Result = $Manifest.lastResult
+    if ($Result -isnot [hashtable] -or $Result.outputs -isnot [hashtable] -or
+        $Result.run_id -cnotmatch '^[a-zA-Z0-9_]{1,48}$') {
+        throw 'A verified simulation result is required before viewing results.'
+    }
+    foreach ($Name in @('grid_population_vulnerability','arrival','origin')) {
+        $Output = $Result.outputs[$Name]
+        if ($Output -isnot [hashtable] -or
+            ($Output.rows -isnot [int] -and $Output.rows -isnot [long]) -or
+            $Output.table -cnotmatch '^[a-z][a-z0-9_]*$' -or
+            $Output.rows -lt 0 -or $Output.rows -gt 5000) {
+            throw "Missing or oversized verified preview output: $Name"
+        }
+    }
+    if ($Result.outputs.origin.rows -ne 1 -or $Result.outputs.grid_population_vulnerability.rows -lt 1) {
+        throw 'Preview requires one origin and a nonempty grid.'
+    }
+    $Literal = ($Result | ConvertTo-Json -Depth 10 -Compress) | ConvertTo-Json -Compress
+    $Source = "import json`nRESULT = json.loads($Literal)`n" +
+        (Get-Content -LiteralPath (Join-Path $script:Root 'deploy\fabric\notebook\results-map.py') -Raw) + @'
+
+import notebookutils
+from IPython.display import SVG, display
+
+def read_output(name, geometry):
+    output = RESULT["outputs"][name]
+    rows = spark.table(output["table"]).select(geometry, "geometry_srid").limit(5001).collect()
+    if len(rows) != output["rows"] or len(rows) > 5000:
+        raise RuntimeError(f"Preview row count differs from the verified result: {name}")
+    if any(row["geometry_srid"] != 4326 for row in rows):
+        raise RuntimeError("Preview geometry must use EPSG:4326.")
+    return [row[geometry] for row in rows]
+
+grid = read_output("grid_population_vulnerability", "cell_geom_wkt")
+arrival = read_output("arrival", "cell_geom_wkt")
+origin = read_output("origin", "geometry_wkt")
+svg = render_map(grid, arrival, origin[0], RESULT["run_id"])
+display(SVG(data=svg))
+notebookutils.notebook.exit(json.dumps({
+    "preview": "passed", "run_id": RESULT["run_id"],
+    "grid_rows": len(grid), "arrival_rows": len(arrival), "origin_rows": len(origin),
+    "svg": svg,
+}))
+'@
+    return @{
+        nbformat=4;nbformat_minor=5
+        cells=@(
+            @{cell_type='markdown';metadata=@{};source='## View completed Fast Pass results. Run all to read the verified Delta tables and render a bounded map. No credential, simulation, table writes, basemap or ArcGIS publication.'}
+            @{cell_type='code';metadata=@{};source=$Source;outputs=@();execution_count=$null}
+        )
+        metadata=@{
+            kernel_info=@{name='synapse_pyspark'};language_info=@{name='python'}
+            dependencies=@{
+                lakehouse=@{
+                    default_lakehouse=$Manifest.lakehouseId;default_lakehouse_name=$LakehouseName
+                    default_lakehouse_workspace_id=$Manifest.workspaceId
+                    known_lakehouses=@(@{id=$Manifest.lakehouseId})
+                }
+                environment=@{environmentId=$Manifest.environmentId;workspaceId=$Manifest.workspaceId}
+            }
+        }
+    }
+}
 #endregion

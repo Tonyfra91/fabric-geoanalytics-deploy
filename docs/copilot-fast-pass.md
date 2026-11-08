@@ -54,9 +54,9 @@ Continue at [this section in the numbered journey](../01-start-here/copilot.md#f
 
 Continue at [this section in the numbered journey](../01-start-here/copilot.md#fp08-let-copilot-check-preparation-and-confirm-your-prerequisites).
 
-## FP09 Review parameters and press the unchanged blue button
+## FP09 Review parameters and load the private Azure template
 
-Continue at [this section in the numbered journey](../02-deploy-azure/copilot.md#fp09-review-parameters-and-press-the-unchanged-blue-button).
+Continue at [this section in the numbered journey](../02-deploy-azure/copilot.md#fp09-review-parameters-and-load-the-private-azure-template).
 
 ## FP10 Review the initialized configuration and validation
 

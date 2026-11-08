@@ -19,16 +19,16 @@ There are no required commands in this step.
 
 Choose an idea to explore:
 
-* Compare the sample-data results with the optional small Atlanta
-  real-population run.
+* Consider a separately approved small Atlanta real-population experiment.
+  It was **NOT RUN** during end-to-end validation and is not needed for success.
 * Examine the grid, arrival and daily-spread tables to understand the model.
 * Discuss how the pattern could help answer a question about service
   coverage, infrastructure or another location-based need.
 * Consider a separate ArcGIS map or application that could use the results.
 
 Start small. Get approval for any new data, paid compute or publishing
-before changing the setup. Maps, dashboards and field apps from the opening
-illustration are not created by this guide.
+before changing the setup. Optional ArcGIS dashboards and field apps are not
+created by this guide.
 
 ### See
 
@@ -45,4 +45,4 @@ approve another small run. Otherwise, save your results and use the
 when the resource owner agrees they are no longer needed.
 
 For implementation details, see the optional
-[architecture reference](../deploy/README.md#architecture-details).
+[engineering evidence](../engineering/validation-notes.md#architecture-details).
