@@ -1,7 +1,7 @@
 ---
 title: 01 Start here
 description: Choose one route, prepare tools and verify access before deployment.
-ms.date: 2026-11-04
+ms.date: 2026-11-08
 ---
 
 ## 01 Start here
@@ -15,6 +15,11 @@ Start in your browser. The instructions tell you when to install tools,
 download a local copy of the repository and open VS Code.
 Open the **whole cloned repository** in VS Code, not a numbered subfolder.
 Run terminal commands from the main folder containing `deploy.ps1`.
+
+[![Choose your path: Copilot Fast Pass with reviewed setup commands or the manual step-by-step route, both leading to the same Fabric GeoAnalytics outcome.](../docs/images/choose-your-path.png)](../docs/images/choose-your-path.png)
+
+The illustrated time estimates are not guaranteed. Approvals, provisioning and
+compute startup can take longer.
 
 ### Do
 
