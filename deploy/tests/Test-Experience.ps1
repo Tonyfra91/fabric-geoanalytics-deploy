@@ -252,6 +252,92 @@ if ($MyInvocation.InvocationName -ne '.') {
             }
             Write-Host "Experience checks passed: $script:Count"
         }
+        & {
+            $BuildRoot = Join-Path ([IO.Path]::GetTempPath()) "geo-bicep-$([guid]::NewGuid().ToString('N'))"
+            $BuildScript = Join-Path $BuildRoot 'scripts\Build-Template.ps1'
+            $CompiledTemplates = @{}
+            $BuildExitCode = 0
+            function az {
+                param([Parameter(ValueFromRemainingArguments)][string[]]$Arguments)
+                if (($Arguments[0..1] -join ' ') -ne 'bicep build') { throw 'Unexpected CLI call in offline template checks.' }
+                $Source = Split-Path $Arguments[[array]::IndexOf($Arguments, '--file') + 1] -Leaf
+                $Output = $Arguments[[array]::IndexOf($Arguments, '--outfile') + 1]
+                if ($BuildExitCode -eq 0) { Set-Content -LiteralPath $Output -Value $CompiledTemplates[$Source] -Encoding utf8 }
+                $global:LASTEXITCODE = $BuildExitCode
+            }
+            try {
+                $null = New-Item -ItemType Directory -Path (Join-Path $BuildRoot 'scripts')
+                Copy-Item -LiteralPath (Join-Path $RepositoryRoot 'deploy\scripts\Build-Template.ps1') -Destination $BuildScript
+                $Originals = @{}
+                foreach ($Pair in @(
+                    @{source='main.bicep';output='azuredeploy.json'},
+                    @{source='secret-setup.bicep';output='secret-setup.azuredeploy.json'}
+                )) {
+                    $Originals[$Pair.source] = Get-Content -LiteralPath (Join-Path $RepositoryRoot "deploy\$($Pair.output)") -Raw
+                    Copy-Item -LiteralPath (Join-Path $RepositoryRoot "deploy\$($Pair.output)") -Destination (Join-Path $BuildRoot $Pair.output)
+                }
+                $Cases = @(
+                    @{name='original 0.48.1 compiler output';kind='original';exit=0},
+                    @{name='0.49.x root and nested compiler provenance only';kind='compiler';exit=0},
+                    @{name='parameter default drift';kind='parameter';exit=1},
+                    @{name='nested resource drift';kind='resource';exit=1},
+                    @{name='output expression drift';kind='output';exit=1},
+                    @{name='noncompiler metadata drift';kind='metadata';exit=1},
+                    @{name='generator name drift';kind='generator';exit=1},
+                    @{name='credential template drift';kind='credential';exit=1},
+                    @{name='compiler failure';kind='failure';exit=1}
+                )
+                foreach ($Case in $Cases) {
+                    foreach ($Source in $Originals.Keys) {
+                        $CompiledTemplates[$Source] = $Originals[$Source]
+                        if ($Case.kind -ne 'original') {
+                            $CompiledTemplates[$Source] = $CompiledTemplates[$Source].Replace('0.48.1.52935','0.49.2.12345') -replace '"templateHash": "\d+"','"templateHash": "12345"'
+                        }
+                    }
+                    $BuildExitCode = if ($Case.kind -eq 'failure') { 1 } else { 0 }
+                    switch ($Case.kind) {
+                        'parameter' {
+                            $CompiledTemplates['main.bicep'] = $CompiledTemplates['main.bicep'].Replace('"defaultValue": "F2"','"defaultValue": "F4"')
+                        }
+                        'resource' {
+                            $CompiledTemplates['main.bicep'] = $CompiledTemplates['main.bicep'].Replace('"publicNetworkAccess": "Disabled"','"publicNetworkAccess": "Enabled"')
+                        }
+                        'output' {
+                            $CompiledTemplates['main.bicep'] = $CompiledTemplates['main.bicep'].Replace('"value": "1.0"','"value": "changed"')
+                        }
+                        'metadata' {
+                            $CompiledTemplates['main.bicep'] = $CompiledTemplates['main.bicep'].Replace('"name": "Fabric GeoAnalytics deployment experience"','"name": "changed"')
+                        }
+                        'generator' {
+                            $CompiledTemplates['main.bicep'] = $CompiledTemplates['main.bicep'].Replace('"name": "bicep"','"name": "changed"')
+                        }
+                        'credential' {
+                            $CompiledTemplates['secret-setup.bicep'] = $CompiledTemplates['secret-setup.bicep'].Replace('"type": "securestring"','"type": "string"')
+                        }
+                    }
+                    $BuildOutput = & $BuildScript -Check *>&1 | Out-String
+                    if ($LASTEXITCODE -ne $Case.exit -or
+                        ($Case.exit -eq 0 -and [regex]::Matches($BuildOutput, 'Portal template matches Bicep source:').Count -ne 2) -or
+                        ($Case.exit -eq 1 -and $BuildOutput -notmatch 'Portal template is stale|Bicep compilation failed')) {
+                        throw "Template check did not handle $($Case.name): $BuildOutput"
+                    }
+                    if (@(Get-ChildItem -LiteralPath $BuildRoot -Filter '*.tmp').Count) { throw 'Template check left temporary compiler output behind.' }
+                    Write-Host "PASS: Template freshness handles $($Case.name)"
+                }
+                foreach ($Pair in @(
+                    @{source='main.bicep';output='azuredeploy.json'},
+                    @{source='secret-setup.bicep';output='secret-setup.azuredeploy.json'}
+                )) {
+                    if ((Get-Content -LiteralPath (Join-Path $BuildRoot $Pair.output) -Raw) -cne $Originals[$Pair.source]) {
+                        throw 'Check mode must never rewrite published templates.'
+                    }
+                }
+                Write-Host "Bicep template compatibility checks passed: $($Cases.Count); published templates unchanged."
+            }
+            finally {
+                if (Test-Path -LiteralPath $BuildRoot) { Remove-Item -LiteralPath $BuildRoot -Recurse }
+            }
+        }
         $Template = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'deploy\azuredeploy.json') -Raw | ConvertFrom-Json -AsHashtable -Depth 100
         if ($Template.'$schema' -notmatch 'subscriptionDeploymentTemplate') { throw 'Portal template must be subscription scoped.' }
         if ($Template.outputs.experienceVersion.value -ne '1.0') { throw 'Portal template handoff version mismatch.' }

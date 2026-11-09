@@ -236,7 +236,14 @@ function Test-Prerequisite {
     try {
         $Version = & az bicep version --only-show-errors
         if ($LASTEXITCODE -ne 0) { throw 'Bicep unavailable. Run az bicep install.' }
-        & $Add 'Bicep' 'Pass' 'Azure CLI managed Bicep is available.'
+        if (($Version -join "`n") -notmatch '^Bicep CLI version (?<Version>\d+\.\d+\.\d+)(?:\s|$)') {
+            throw 'Cannot determine Bicep CLI version. Run az bicep version; requires 0.48.1 or later.'
+        }
+        $BicepVersion = [version]$Matches.Version
+        if ($BicepVersion -lt [version]'0.48.1') {
+            throw "Bicep CLI $BicepVersion is below the supported minimum 0.48.1. Run az bicep upgrade."
+        }
+        & $Add 'Bicep' 'Pass' "Azure CLI managed Bicep $BicepVersion meets minimum 0.48.1 (originally validated version)."
     } catch { & $Add 'Bicep' 'Fail' $_.Exception.Message }
     foreach ($File in @('deploy\main.bicep','deploy\fabric\environment\spark-compute.json',
         'deploy\fabric\notebook\bootstrap.txt','deploy\fabric\notebook\delta-output.txt','Zombie_Outbreak_Spread.ipynb')) {

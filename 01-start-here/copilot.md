@@ -109,7 +109,8 @@ has been deployed.
 4. Install/check the remaining tools using
    [manual Step 01](./manual.md#step-01-install-and-verify-the-tools).
    That step has the installer links and version commands for PowerShell 7,
-   Git, Azure CLI, Bicep 0.48.1 and Python 3.12.
+   Git, Azure CLI, Bicep CLI 0.48.1 or later and Python 3.12.
+   The accelerator was originally validated with Bicep CLI 0.48.1.
 5. Close/reopen VS Code after installations so it inherits the updated PATH.
 
 See/expect: VS Code opens and the tools are available. No local Spark or

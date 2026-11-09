@@ -86,8 +86,10 @@ ArcGIS publication, semantic models, or production certification.
    numbered journey folders.
    Inspect Git status, existing configuration and manifest presence. Do not
    open an unrelated root or reset changes. Use PowerShell 7 on Windows.
-2. Check PowerShell, Git, Azure CLI, Bicep 0.48.1 and Python. Missing tools
-   are blockers with FP02/manual Step 01 installation instructions.
+2. Check PowerShell, Git, Azure CLI, Bicep CLI 0.48.1 or later and Python.
+   The accelerator was originally validated with Bicep CLI 0.48.1, not pinned
+   to it. Missing tools or Bicep below the minimum are blockers with
+   FP02/manual Step 01 installation instructions.
 3. Obtain the local pinned notebook with `.\Get-DemoNotebook.ps1`; run
    `.\deploy\tests\Test-Accelerator.ps1`,
    `.\deploy\tests\Test-Experience.ps1`, and

@@ -269,6 +269,16 @@ print("Delta output contract, read-back counts, and overwrite guard passed (mock
             $script:Fixture.capacity.id = '33333333-3333-3333-3333-333333333333'
             $script:Fixture.keyVaultName = 'kv-offline-zombie'
             $script:Scenario = 'ready'
+            $script:BicepOutput = 'Bicep CLI version 0.48.1 (offline)'
+            $script:BicepExitCode = 0
+            function script:az {
+                param([Parameter(ValueFromRemainingArguments)][string[]]$Arguments)
+                if (($Arguments -join ' ') -ne 'bicep version --only-show-errors') {
+                    throw "Unexpected direct CLI call in offline validation: $($Arguments -join ' ')"
+                }
+                $global:LASTEXITCODE = $script:BicepExitCode
+                return $script:BicepOutput
+            }
             $script:Methods = [System.Collections.Generic.List[string]]::new()
             function script:Invoke-AzJson {
                 param([string[]]$Arguments)
@@ -358,6 +368,30 @@ print("Delta output contract, read-back counts, and overwrite guard passed (mock
             Assert-Check 'Existing-capacity validation requires Network but not Azure Fabric registration' (
                 @($Report | Where-Object Check -eq 'Microsoft.Network').Count -eq 1 -and
                 @($Report | Where-Object Check -eq 'Microsoft.Fabric').Count -eq 0)
+            foreach ($Version in @('0.48.1','0.49.0','0.49.2','0.100.0','1.0.0')) {
+                $script:BicepOutput = "Bicep CLI version $Version (offline)"
+                $BicepCheck = Test-Prerequisite $script:Fixture | Where-Object Check -eq 'Bicep'
+                Assert-Check "Bicep $Version meets the minimum without an exact pin" (
+                    $BicepCheck.Status -eq 'Pass' -and $BicepCheck.Detail -match [regex]::Escape($Version))
+            }
+            foreach ($Version in @('0.48.0','0.47.9','0.9.9')) {
+                $script:BicepOutput = "Bicep CLI version $Version (offline)"
+                $BicepCheck = Test-Prerequisite $script:Fixture | Where-Object Check -eq 'Bicep'
+                Assert-Check "Bicep $Version fails with minimum-version and upgrade guidance" (
+                    $BicepCheck.Status -eq 'Fail' -and $BicepCheck.Detail -match 'minimum 0\.48\.1.*az bicep upgrade')
+            }
+            foreach ($Output in @('','unexpected version output','Bicep CLI version 0.49.0-preview (offline)')) {
+                $script:BicepOutput = $Output
+                $BicepCheck = Test-Prerequisite $script:Fixture | Where-Object Check -eq 'Bicep'
+                Assert-Check 'Unknown Bicep version fails explicitly instead of assuming compatibility' (
+                    $BicepCheck.Status -eq 'Fail' -and $BicepCheck.Detail -match 'Cannot determine Bicep CLI version')
+            }
+            $script:BicepExitCode = 1
+            $BicepCheck = Test-Prerequisite $script:Fixture | Where-Object Check -eq 'Bicep'
+            Assert-Check 'Unavailable Bicep retains installation guidance' (
+                $BicepCheck.Status -eq 'Fail' -and $BicepCheck.Detail -match 'Bicep unavailable.*az bicep install')
+            $script:BicepOutput = 'Bicep CLI version 0.48.1 (offline)'
+            $script:BicepExitCode = 0
             $script:Fixture.capacity.mode = 'new'
             $NewReport = Test-Prerequisite $script:Fixture
             Assert-Check 'Explicit new-capacity mode checks Azure Fabric registration' (

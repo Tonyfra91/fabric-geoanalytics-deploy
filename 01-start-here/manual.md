@@ -113,7 +113,7 @@ winget install --exact --id Python.Python.3.12
 | PowerShell 7 | [Install PowerShell on Windows](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows) | All accelerator commands require version 7 or later                           |
 | Git          | [Git for Windows](https://git-scm.com/downloads/win)                                                                             | Download this repository                                                      |
 | Azure CLI    | [Install Azure CLI on Windows](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows)                            | Azure sign-in, deployment reads, and Fabric authentication                    |
-| Bicep 0.48.1 | [Install Bicep with Azure CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install#azure-cli)           | Local validation and template freshness check                                 |
+| Bicep CLI    | [Install Bicep with Azure CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install#azure-cli)           | Version 0.48.1 or later; local validation and template freshness check         |
 | Python 3.12  | [Python downloads](https://www.python.org/downloads/windows/)                                                                    | Offline notebook syntax/output-contract tests; not a local Spark installation |
 
 Close and reopen Terminal after installation so PATH changes take effect.
@@ -124,12 +124,15 @@ $PSVersionTable.PSVersion
 git --version
 az version
 python --version
-az bicep install --version v0.48.1
+az bicep install
 az bicep version
 ```
 
 See/expect: PowerShell's `Major` is at least `7`, each tool prints a version,
-and Bicep reports `0.48.1`. A command-not-found error is a blocker; reopen
+and Bicep reports `0.48.1` or later. The accelerator was originally validated
+with Bicep CLI `0.48.1`; this is the minimum known-good version, not an exact pin.
+For an older installed version, run `az bicep upgrade`.
+A command-not-found error is a blocker; reopen
 Terminal or ask IT to fix the installation. You do not need local PySpark,
 GeoAnalytics, or ArcGIS Python packages.
 
@@ -174,10 +177,17 @@ Run the offline checks:
 .\deploy\scripts\Build-Template.ps1 -Check
 ```
 
-See/expect: `HTTP compatibility checks passed: 27`, `Offline checks passed: 46`,
-`Experience checks passed: 35`, the portal/documentation contract PASS message, and
+See/expect: `HTTP compatibility checks passed: 27`, `Offline checks passed: 61`,
+`Experience checks passed: 35`, `Bicep template compatibility checks passed: 9`,
+the portal/documentation contract PASS message, and
 `Portal template matches Bicep source.` These tests use cloud mocks;
 they do not certify your permissions or tenant.
+
+Template freshness checks ignore only Bicep compiler version/hash metadata,
+including in nested templates. A newer compiler is not rejected for that metadata
+alone. Other compiled content differences still block the check and require
+maintainer review; do not regenerate or change deployment templates to bypass it.
+CI retains Bicep `0.48.1` as the original validated compiler baseline.
 
 For private-network lifecycle coverage, also run
 `.\deploy\tests\Test-ManagedPrivateEndpoint.ps1` and expect
