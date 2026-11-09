@@ -1,7 +1,7 @@
 ---
 title: 02 Deploy Azure - Copilot Fast Pass
 description: Review Azure settings with Copilot and create the Azure resources in the portal.
-ms.date: 2026-11-04
+ms.date: 2026-11-08
 ---
 
 [Stage overview](./README.md) | [Journey home](../README.md#start-here)
@@ -23,12 +23,16 @@ subscription, ownership `deploymentName`, region, new group, unique vault,
 executing user's `userObjectId`, dedicated private-network names/ranges, and the capacity choice.
 An existing capacity remains the default. Review it against your private note.
 
-Open Azure **Custom deployment > Build your own template in the editor > Load file**
-and load the checkout's compiled `deploy\azuredeploy.json`. Save, enter the reviewed
-fields, and select **Review + create > Create** yourself. Do not use the old
-`v0.1.0` release button or change its immutable tag.
-The complete field/screen reference is
-[manual Step 13](./manual.md#step-13-load-the-private-template-and-enter-the-azure-parameters).
+At [manual Step 13](./manual.md#step-13-load-the-private-template-and-enter-the-azure-parameters),
+select the preferred **Deploy to Azure** button after prerequisite and parameter
+review. It loads the commit-pinned private compiled template into Azure
+**Custom deployment**. The offline checks verify that it matches the checkout's
+`deploy\azuredeploy.json`; stop on a mismatch.
+The immediately available fallback is **Build your own template in the editor >
+Load file**, using that same compiled JSON, then **Save**.
+With either entry, enter the reviewed fields and select **Review + create >
+Create** yourself. Do not use the old `v0.1.0` release button or change its
+immutable tag. The button's portal experience still needs live validation.
 Copilot must not press Create for you or substitute CLI Azure deployment.
 
 See/expect: Azure **Custom deployment**, then deployment progress.

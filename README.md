@@ -170,8 +170,11 @@ Do not deploy Azure until folder 01's prerequisites are confirmed.
 ### Use the current private Azure template
 
 At [Step 13](./02-deploy-azure/manual.md#step-13-load-the-private-template-and-enter-the-azure-parameters),
-load the checkout's [compiled foundation](./deploy/azuredeploy.json) into Azure
-**Custom deployment > Build your own template in the editor > Load file**.
+use the preferred **Deploy to Azure** button after completing prerequisites.
+It loads an immutable commit-pinned copy of the checkout's
+[compiled foundation](./deploy/azuredeploy.json) into Azure **Custom deployment**.
+The supported fallback is **Build your own template in the editor > Load file**,
+using the same compiled JSON, then **Save**.
 Review the subscription-scoped deployment, then select Create yourself.
 The old `v0.1.0` button is not the supported private-foundation entry.
 
@@ -233,8 +236,8 @@ Save your run ID and use the [completion checklist](./04-run-and-verify/manual.m
 ## About this guide
 
 This is a local Fast Pass v0.1 candidate for small, approved trials, not a production-ready solution.
-The revised checked-out-template Azure entry still needs new-customer UI validation
-before release; the old immutable release was not changed.
+The new Azure button and Load file fallback still need new-customer UI validation.
+The legacy tag and its public-access template remain unchanged.
 Check the results in your own workspace using the
 [completion checklist](./04-run-and-verify/manual.md#acceptance-checklist).
 

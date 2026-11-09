@@ -256,7 +256,10 @@ if ($MyInvocation.InvocationName -ne '.') {
         if ($Template.'$schema' -notmatch 'subscriptionDeploymentTemplate') { throw 'Portal template must be subscription scoped.' }
         if ($Template.outputs.experienceVersion.value -ne '1.0') { throw 'Portal template handoff version mismatch.' }
         if ($Template.parameters.shouldCreateCapacity.defaultValue -ne $false) { throw 'New capacity must remain opt-in.' }
-        if (@($Template.parameters.Keys | Where-Object { $_ -match 'secret|password|token|apiKey' }).Count) {
+        if (@($Template.parameters.Keys | Where-Object {
+            $_ -match 'secret|password|token|apiKey' -or
+            $Template.parameters[$_].type -in @('secureString','secureObject')
+        }).Count) {
             throw 'Portal template must not accept workload secrets.'
         }
         $Foundations = @($Template.resources.Values | Where-Object { $_.properties.template.outputs.privateEndpointId })
@@ -329,12 +332,63 @@ if ($MyInvocation.InvocationName -ne '.') {
                 }
             }
         }
+        $TemplateCommit = '357293c2c850d855aa511bb08ead30736bacf5e5'
+        $RawTemplateUrl = "https://raw.githubusercontent.com/Tonyfra91/fabric-geoanalytics-deploy/$TemplateCommit/deploy/azuredeploy.json"
+        $PortalBase = 'https://portal.azure.com/#create/Microsoft.Template/uri/'
+        $PortalUrl = $PortalBase + [uri]::EscapeDataString($RawTemplateUrl)
+        $TemplateText = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'deploy\azuredeploy.json') -Raw -Encoding utf8
+        $TemplateHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData(
+            [Text.Encoding]::UTF8.GetBytes(($TemplateText -replace "`r`n","`n"))))
+        if ($TemplateHash -cne '7F5D7698D6B3A915F5012D91AC8B22B0A0A243AF96365EB2E85F7E425B7EBD50') {
+            throw 'Compiled foundation differs from the approved button pin; verify and update the pin before publishing.'
+        }
+        function Assert-PrivateAzureButton([string]$Content) {
+            $Badges = [regex]::Matches($Content, '\[!\[[^\]\r\n]*\]\((?<image>[^)\r\n]+)\)\]\((?<target>[^)\r\n]+)\)')
+            if ($Badges.Count -ne 1 -or
+                $Badges[0].Groups['image'].Value -cne 'https://aka.ms/deploytoazurebutton' -or
+                $Badges[0].Value -notmatch '^\[!\[Deploy to Azure\]' -or
+                $Badges[0].Groups['target'].Value -cne $PortalUrl) {
+                throw 'Step 13 requires exactly one Microsoft Deploy to Azure badge targeting the approved immutable private template.'
+            }
+            $DecodedUrl = [uri]::UnescapeDataString($Badges[0].Groups['target'].Value.Substring($PortalBase.Length))
+            if ($DecodedUrl -cnotmatch '^https://raw\.githubusercontent\.com/Tonyfra91/fabric-geoanalytics-deploy/[a-f0-9]{40}/deploy/azuredeploy\.json$' -or
+                $DecodedUrl -cne $RawTemplateUrl) {
+                throw 'Azure button must load only the approved commit-pinned compiled foundation without credential parameters.'
+            }
+            $Step13 = $Content.IndexOf('### Step 13 ')
+            $Step14 = $Content.IndexOf('### Step 14 ')
+            if ($Step13 -lt 0 -or $Step14 -le $Step13 -or
+                $Badges[0].Index -le $Step13 -or $Badges[0].Index -ge $Step14) {
+                throw 'Azure button must remain inside Step 13, after preparation and before Fabric handoff.'
+            }
+        }
+        $ButtonGuide = Get-Content -LiteralPath (Join-Path $RepositoryRoot '02-deploy-azure\manual.md') -Raw
+        Assert-PrivateAzureButton $ButtonGuide
+        $Badge = [regex]::Match($ButtonGuide, '\[!\[Deploy to Azure\]\([^)]+\)\]\([^)]+\)')
+        $InvalidButtons = @(
+            @{name='missing button';content=$ButtonGuide.Replace($Badge.Value,'')},
+            @{name='non-Microsoft image';content=$ButtonGuide.Replace('https://aka.ms/deploytoazurebutton','https://example.invalid/button.png')},
+            @{name='non-Azure portal';content=$ButtonGuide.Replace($PortalBase,'https://example.invalid/uri/')},
+            @{name='mutable main';content=$ButtonGuide.Replace($TemplateCommit,'main')},
+            @{name='legacy release';content=$ButtonGuide.Replace($TemplateCommit,'v0.1.0')},
+            @{name='unapproved commit';content=$ButtonGuide.Replace($TemplateCommit,('0' * 40))},
+            @{name='credential template';content=$ButtonGuide.Replace('%2Fdeploy%2Fazuredeploy.json','%2Fdeploy%2Fsecret-setup.azuredeploy.json')},
+            @{name='credential URL parameter';content=$ButtonGuide.Replace($PortalUrl,($PortalUrl + '?geoAnalyticsApiKey=synthetic'))},
+            @{name='duplicate button';content=($ButtonGuide + "`n" + $Badge.Value)},
+            @{name='button before preparation';content=($Badge.Value + "`n" + $ButtonGuide.Replace($Badge.Value,''))}
+        )
+        foreach ($Invalid in $InvalidButtons) {
+            $Failure = $null
+            try { Assert-PrivateAzureButton $Invalid.content } catch { $Failure = $_.Exception.Message }
+            if (-not $Failure) { throw "Button contract accepted $($Invalid.name)." }
+            Write-Host "PASS: Azure button rejects $($Invalid.name)"
+        }
+        Write-Host "Private Azure button contracts passed: approved pin/checksum and $($InvalidButtons.Count) rejected variants."
         foreach ($Path in @('README.md','02-deploy-azure\manual.md')) {
             $Content = Get-Content -LiteralPath (Join-Path $RepositoryRoot $Path) -Raw
-            if ($Content -match 'https://portal\.azure\.com/#create/Microsoft\.Template/uri/' -or
-                $Content -notmatch 'Load file' -or $Content -notmatch 'deploy/azuredeploy.json' -or
+            if ($Content -notmatch 'Load file' -or $Content -notmatch 'deploy/azuredeploy.json' -or
                 $Content -notmatch 'subscription-scoped' -or $Content -notmatch 'Disabled') {
-                throw "Private checked-out-template Azure entry is missing or an old release button remains in $Path."
+                throw "Private Azure entry or same-template Load file fallback is missing in $Path."
             }
         }
         $RunGuide = Get-Content -LiteralPath (Join-Path $RepositoryRoot '04-run-and-verify\manual.md') -Raw
@@ -358,6 +412,12 @@ if ($MyInvocation.InvocationName -ne '.') {
                 $Content = Get-Content -LiteralPath $File.FullName -Raw
                 if ($Content -match 'hidden (?:terminal )?prompt|public-network Key Vault|public access with RBAC|ipywidgets|getpass') {
                     throw "Retired secret/network experiment remains in customer guidance: $($File.Name)."
+                }
+                foreach ($Link in [regex]::Matches($Content, 'https://portal\.azure\.com/#create/Microsoft\.Template/uri/[^\s)<>"]+', [Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+                    if ($File.FullName -ne (Join-Path $RepositoryRoot '02-deploy-azure\manual.md') -or
+                        $Link.Value -cne $PortalUrl) {
+                        throw "Unapproved or misplaced Azure deployment URI in customer guidance: $($File.Name)."
+                    }
                 }
             }
         }

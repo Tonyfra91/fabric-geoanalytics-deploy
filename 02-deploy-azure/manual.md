@@ -1,7 +1,7 @@
 ---
 title: 02 Deploy Azure - Manual walkthrough
-description: Load the current private Azure template and save the Fabric handoff details.
-ms.date: 2026-11-04
+description: Use Deploy to Azure for the current private template and save the Fabric handoff details.
+ms.date: 2026-11-08
 ---
 
 [Stage overview](./README.md) | [Journey home](../README.md#start-here)
@@ -18,19 +18,39 @@ Where to be: Azure portal's Custom deployment template editor.
 Why now: your access, names, capacity, licensing and network approvals are
 confirmed. This creates the private Azure foundation, not the spatial results.
 
-1. In Azure portal, search **Deploy a custom template** and open **Custom deployment**.
-2. Select **Build your own template in the editor > Load file**, select the
-   checked-out [deploy/azuredeploy.json](../deploy/azuredeploy.json), then **Save**.
-   Use the compiled JSON, not Bicep or the credential template. Sign in with the
-   same Step 03 account. Do not use the old public-access `v0.1.0` button.
-3. Select your approved subscription. This is a **subscription-scoped**
+#### Preferred Deploy to Azure
+
+After completing Steps 01-12 and reviewing your parameters, select this button.
+It opens Azure **Custom deployment** with the private compiled template already
+loaded. It does not select Create or supply the Esri key.
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FTonyfra91%2Ffabric-geoanalytics-deploy%2F357293c2c850d855aa511bb08ead30736bacf5e5%2Fdeploy%2Fazuredeploy.json)
+
+The template is pinned to
+[commit 357293c2c850d855aa511bb08ead30736bacf5e5](https://github.com/Tonyfra91/fabric-geoanalytics-deploy/blob/357293c2c850d855aa511bb08ead30736bacf5e5/deploy/azuredeploy.json),
+not mutable `main` or legacy `v0.1.0`. The Step 02 offline checks verify that
+the checkout's compiled template matches this pin. Stop if they fail.
+The button does not load local template edits.
+
+#### Fallback Manual Azure Custom deployment
+
+If the button cannot load, in Azure portal search **Deploy a custom template**
+and open **Custom deployment**. Select **Build your own template in the editor >
+Load file**, select the same checked-out
+[deploy/azuredeploy.json](../deploy/azuredeploy.json), then **Save**.
+Use the compiled JSON, not Bicep or the credential template.
+Do not use the old public-access `v0.1.0` button.
+
+With either entry, sign in with the same Step 03 account, then:
+
+1. Select your approved subscription. This is a **subscription-scoped**
    deployment; the template creates its own resource group.
-4. Fill the template fields using the table below. Azure may display camelCase
+2. Fill the template fields using the table below. Azure may display camelCase
    names with spaces, such as “Deployment Name”.
-5. If Azure displays a separate deployment metadata **Region/Location** field,
+3. If Azure displays a separate deployment metadata **Region/Location** field,
    choose the approved deployment region there too. The template's `location`
    parameter controls the actual resource/capacity region.
-6. Select **Review + create**, review validation, subscription, names, resources
+4. Select **Review + create**, review validation, subscription, names, resources
    and cost implications, then select **Create** only if they match your note.
 
 | Template field           | Enter/select this for the existing-capacity path                             |
@@ -72,8 +92,8 @@ No Esri key is created or accepted, and no notebook is executed.
 > [!NOTE]
 > Key Vault public access stays **Disabled**. The Azure private endpoint does not
 > connect your computer or Fabric automatically; Stage 3 establishes the Fabric
-> managed endpoint. The revised template-selection UI is repository-tested
-> guidance awaiting new-customer validation. Stop if the form is not
+> managed endpoint. The new button and Load file fallback have offline checks
+> but still need new-customer portal validation. Stop if the form is not
 > subscription-scoped. Never redeploy an existing validated foundation just to
 > change the entry UI.
 

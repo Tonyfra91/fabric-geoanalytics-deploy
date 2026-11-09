@@ -52,8 +52,9 @@ ArcGIS publication, semantic models, or production certification.
   Do not treat tool approval or “do all of it” as permission for every cloud stage.
 * Obtain separate explicit approvals for Fabric creation/update, the synthetic
   run, and the real-population run. State exact target, command, inputs and costs.
-* The user loads the checkout's compiled private template in Azure Custom
-  deployment and selects Create after prerequisites and parameter review.
+* After prerequisites and parameter review, the user selects the commit-pinned
+  Deploy to Azure button in manual Step 13, then reviews Azure Custom deployment
+  and selects Create. Load file using the same compiled JSON is the fallback.
   Do not click Create, invoke bare `deploy`, run CLI Azure provisioning,
   change templates or use the old public-access `v0.1.0` button.
 * Never request or inspect passwords, MFA/device codes, bearer tokens, API keys,
@@ -110,10 +111,13 @@ When ready, proceed to the user-controlled Azure step, not a cloud tool call.
 1. Show the exact portal parameter table based on verified values and the user's
    signed-in object ID. Explain subscription deployment record name versus
    template ownership `deploymentName`.
-2. Guide manual Steps 13-14: Azure Custom deployment > Build your own template
-   in the editor > Load file, using the checkout's `deploy\azuredeploy.json`.
+2. Guide manual Steps 13-14: the preferred commit-pinned Deploy to Azure button
+   loads the private foundation into Azure Custom deployment. The fallback is
+   Build your own template in the editor > Load file, using the same checkout's
+   `deploy\azuredeploy.json`, then Save. Require the offline template/button
+   checks to pass before either entry; the button does not load local edits.
    The user signs in, reviews the private subscription template/fields/costs
-   and selects Create. This revised entry UI awaits new-customer validation;
+   and selects Create. The button and fallback await new-customer UI validation;
    do not treat local template checks as live UI evidence.
 3. Wait for the user to report success and the subscription deployment record name.
    Read the actual deployment metadata/outputs. Verify success, version, identity,

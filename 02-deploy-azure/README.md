@@ -1,7 +1,7 @@
 ---
 title: 02 Deploy Azure
 description: Create the Azure resources and save the details needed for Fabric setup.
-ms.date: 2026-11-04
+ms.date: 2026-11-08
 ---
 
 ## 02 Deploy Azure
@@ -21,8 +21,10 @@ Continue the route you selected:
 * [Copilot Fast Pass: FP09](./copilot.md)
 * [Manual alternative: Steps 13-14](./manual.md)
 
-Load the checkout's compiled template in **Custom deployment**, enter the reviewed
-parameters, review costs and select **Create**.
+At Step 13, use the preferred **Deploy to Azure** button to load the commit-pinned
+private compiled template in **Custom deployment**. Manual **Load file** using
+the same checkout's compiled JSON remains the supported fallback.
+Enter the reviewed parameters, review costs and select **Create**.
 Copilot does not press Create for you.
 
 ### See

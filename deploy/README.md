@@ -109,5 +109,8 @@ listed in [validation CI](../.github/workflows/validate.yml), including both com
 template freshness checks, before publishing a new release.
 
 The old immutable `v0.1.0` button is not the current private foundation entry.
-The checked-out-template portal selection path still needs new-customer validation.
+Use the preferred commit-pinned **Deploy to Azure** button at
+[Step 13](../02-deploy-azure/manual.md#step-13-load-the-private-template-and-enter-the-azure-parameters).
+Manual Azure Custom deployment **Load file** using the same compiled foundation
+remains the fallback. Both entry experiences still need new-customer validation.
 No optional real-population run or production certification is claimed.
