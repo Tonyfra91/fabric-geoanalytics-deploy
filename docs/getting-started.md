@@ -152,6 +152,9 @@ Continue at [this section in the numbered journey](../04-run-and-verify/manual.m
 
 ## Alternate path without the button
 
+This is the optional CLI foundation path instead of Azure Custom deployment,
+not a release-button deployment.
+
 Continue at [this section in the numbered journey](../04-run-and-verify/manual.md#alternate-cli-foundation-path).
 
 ## Cleanup and troubleshooting

@@ -73,7 +73,7 @@ Never record the Esri key in this table, Git, screenshots, or shared notes.
 | ---------------------------------------------------- | -------------------------------------------------- | ----------------------------------------- |
 | Deployment user's work/school email                  | Your account owner                                 | Both portals and CLI sign-in              |
 | Tenant GUID                                          | Azure subscription's directory; Step 03 CLI output | Azure CLI login and configuration         |
-| Subscription GUID and name                           | Azure portal Subscriptions; Step 03                | CLI and blue-button subscription selector |
+| Subscription GUID and name                           | Azure portal Subscriptions; Step 03                | CLI and Azure Custom deployment subscription selector |
 | Deployment user's object GUID                        | `az ad signed-in-user show`; Step 03               | Portal `userObjectId`                     |
 | Fabric capacity GUID, name, SKU and region           | Step 09 capacity read                              | Initialization and region choice          |
 | Ownership name                                       | Choose at Step 05                                  | Template `deploymentName`                 |
@@ -294,7 +294,7 @@ Choose these names and record them:
 | `resourceGroupName`        | Letters, numbers, underscore or hyphen; maximum 90 characters                                   | `rg-geo-atlanta-youralias-01`       |
 | `keyVaultName`             | Globally unique, 3-24 characters; letter first; alphanumerics/single hyphens; alphanumeric last | `kv-geo-youralias-01`               |
 
-Check the group and vault before the button:
+Check the group and vault before deploying the private template:
 
 ```powershell
 az group exists --name '<your-new-resource-group-name>' --output tsv
@@ -304,7 +304,7 @@ az keyvault check-name --name '<your-new-vault-name>' --query '{available:nameAv
 See/expect: group result `false`, and vault result `"available": true`.
 If either name is already in use, choose a different name and check again.
 Do not retag an existing resource or put the deployment in a shared group.
-The portal button does not run the repo's ownership/conflict validator
+Azure Custom deployment does not run the repo's ownership/conflict validator
 before deployment, and ARM can update existing named resources.
 
 Next: [Step 06](#step-06-sign-into-fabric-and-verify-your-account).

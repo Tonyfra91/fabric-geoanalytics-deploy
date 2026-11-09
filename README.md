@@ -6,6 +6,11 @@ ms.date: 2026-11-08
 
 ## Fabric GeoAnalytics Fast Pass with GitHub Copilot
 
+> **Use this guide, not Releases.** The v0.1.0 release is a legacy public-access
+> deployment, not the current private Fast Pass. Follow **Start here → Copilot
+> Fast Pass** and use the current main-branch checkout. Do not deploy from the
+> old release button or release downloads.
+
 Your data tells you what happened. What changes when you ask **where**?
 
 Where are the gaps in service coverage? Which assets are near an event?
