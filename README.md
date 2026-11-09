@@ -15,10 +15,15 @@ Power BI and Microsoft Fabric.
 
 This Fast Pass gives you a guided, hands-on introduction to **Microsoft Fabric +
 ArcGIS GeoAnalytics**, with **GitHub Copilot in VS Code** as your guide on the
-preferred route. Start with a fictional zombie-outbreak scenario, watch
-its spread on a map, and inspect the same results as tables in Fabric.
-The outbreak is a learning sandbox, not a finished coverage or risk-analysis
-application.
+preferred route.
+
+If Sean McGinnis's Halloween zombie blog brought you here, welcome.
+If not, here's the connection: his [zombie-outbreak demo](https://github.com/SeanKMcG/fabric_zombie_outbreak)
+uses a fictional outbreak to explore location and change over time.
+This Fast Pass builds on that idea with guided setup and a small first run:
+view the map and inspect the same results in Fabric tables.
+You do not need to have read the blog to follow along. The outbreak is a
+learning sandbox, not a finished coverage or risk-analysis application.
 
 **To complete the demo, you need an Azure subscription, an active Fabric F
 capacity with GeoAnalytics enabled, and an Esri GeoAnalytics entitlement with
