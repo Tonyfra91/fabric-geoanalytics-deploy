@@ -270,7 +270,8 @@ then complete the [acceptance checklist](#acceptance-checklist).
 Before finishing, check each result below:
 
 * [ ] Steps 04-12 approvals came from the correct owners, not inferred from login.
-* [ ] Azure deployment succeeded and its outputs match the approved subscription/user.
+* [ ] Azure deployment succeeded and its outputs match the subscription ID,
+  tenant and deployment user selected in Step 03.
 * [ ] `validate` exits `0`.
 * [ ] Fabric finish exits `0` and did not require another Azure deployment.
 * [ ] Fabric workspace contains the expected Lakehouse, environment and notebook.

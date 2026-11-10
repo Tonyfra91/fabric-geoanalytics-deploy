@@ -18,10 +18,14 @@ not from this numbered subfolder.
 | See        | Azure `Deployment succeeded`, version `1.0`, and the recorded deployment name                                                                |
 | Next       | [FP10](../03-finish-fabric/copilot.md#fp10-review-the-initialized-configuration-and-validation) after telling Copilot the actual record name |
 
-Copilot should produce a field-by-field table using your approved values:
+Copilot should produce a field-by-field table using the values you selected and
+checked in Steps 03-12:
 subscription, ownership `deploymentName`, region, new group, unique vault,
 executing user's `userObjectId`, dedicated private-network names/ranges, and the capacity choice.
 An existing capacity remains the default. Review it against your private note.
+The subscription name/ID and deployment user must match Step 03, with deployment
+permissions checked in Step 04 and naming, networking and cost requirements
+confirmed before continuing.
 
 At [manual Step 13](./manual.md#step-13-load-the-private-template-and-enter-the-azure-parameters),
 select the preferred **Deploy to Azure** button after prerequisite and parameter

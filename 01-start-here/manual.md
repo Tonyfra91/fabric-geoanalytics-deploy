@@ -210,13 +210,23 @@ Where to be: Azure portal for account details and local PowerShell for CLI sign-
 1. Open [Azure portal](https://portal.azure.com).
 2. Sign in with the work/school account you will use for the entire test.
 3. Use the search box at the top, search **Subscriptions**, and open that service.
-4. Select the subscription approved for the test. On **Overview**, record its
+4. Select the Azure subscription where you want Fast Pass to deploy its resources.
+   Use a non-production/test subscription where you have the required permissions
+   to create the Fast Pass resources described in Step 04. If your organization
+   requires Azure deployment approval, use the subscription your Azure
+   administrator has approved for this evaluation. On **Overview**, record its
    subscription name and **Subscription ID**.
 5. If the subscription is absent, stop. Ask its administrator to confirm
    your tenant and grant access. Creating a free account or changing directory
-   is not a substitute for access to the approved subscription.
+   is not a substitute for access to the subscription you selected.
 6. Obtain that subscription's tenant GUID from the administrator if you do not
    already have it. Enter the GUID, not the tenant's display name, below.
+
+If you are unsure which subscription your organization allows you to use, stop
+here and confirm the subscription with your Azure administrator before continuing.
+The subscription and your Fabric access must be in the same Microsoft Entra
+tenant. If you are unsure which directory to use, confirm it with your Azure
+and Fabric administrators rather than switching directories to bypass access checks.
 
 In PowerShell 7, replace the text between angle brackets with your actual GUIDs.
 Do not type the angle brackets themselves:
@@ -230,7 +240,8 @@ az ad signed-in-user show --query '{displayName:displayName,userPrincipalName:us
 
 During `az login`, follow the displayed browser or Windows account-selection
 prompt, sign in as the same user, and complete MFA if required. If the CLI
-displays a subscription-selection prompt, select the approved subscription.
+displays a subscription-selection prompt, select the subscription whose name and
+ID you recorded above.
 The subsequent `az account set` selects it explicitly.
 If browser login cannot start, use the CLI's
 `az login --tenant '<tenant-guid>' --use-device-code` option and follow its
@@ -246,22 +257,32 @@ Next: [Step 04](#step-04-confirm-azure-deployment-and-role-assignment-permission
 
 ### Step 04 Confirm Azure deployment and role-assignment permissions
 
-Where to be: Azure portal, in the approved subscription's Access control (IAM).
+Where to be: Azure portal, in the Step 03 subscription's Access control (IAM).
 
-1. In Azure portal, open **Subscriptions** and select the approved subscription.
+1. In Azure portal, open **Subscriptions** and select the subscription whose name
+   and ID you recorded in Step 03.
 2. Open **Access control (IAM)**.
 3. On **Check access**, select **View my access**. If the PIM-integrated view
    is displayed, inspect your role assignments there instead.
-4. Ask the Azure administrator to confirm you can create the dedicated resource
-   group, deploy Key Vault, run subscription deployments, and create the vault's
-   role assignment. If creating capacity, they must also authorize that resource.
+4. Confirm with the Azure administrator that your deployment user can run
+   subscription deployments and create the dedicated resource group, private
+   Key Vault, dedicated VNet/subnet, vault private endpoint and its network
+   interface, private DNS zone and links, and the vault's **Key Vault Secrets
+   Officer** role assignment. These are the Azure resources Fast Pass creates.
+   If creating capacity, they must also authorize that resource.
 
 Expected permission evidence: an appropriately scoped **Owner** role, or an
-approved combination of resource deployment permissions and
+combination of resource deployment permissions and
 `Microsoft.Authorization/roleAssignments/write`, such as **Contributor**
 plus **Role Based Access Control Administrator**. Custom roles, conditions,
 Azure Policy, and deny assignments need administrator review.
 Contributor alone is insufficient to grant the vault role.
+
+The subscription must also allow these resource types, the selected region,
+private networking and associated costs under your organization's policies and
+quota limits. Steps 05 and 12 check provider registration, naming, networking
+and cost requirements. Azure subscription access does not grant Fabric workspace,
+capacity or Esri access; those are checked separately in Steps 06-11.
 
 If your role is eligible through Privileged Identity Management, select
 **Activate role**, complete its approval/MFA requirements, and wait for it to
@@ -277,7 +298,7 @@ Next: [Step 05](#step-05-confirm-providers-and-choose-fresh-azure-names).
 
 ### Step 05 Confirm providers and choose fresh Azure names
 
-Where to be: local PowerShell 7, signed into the approved Azure subscription.
+Where to be: local PowerShell 7, signed into the subscription selected in Step 03.
 
 In PowerShell:
 
@@ -332,7 +353,8 @@ Where to be: the Fabric portal browser tab, not Azure portal.
    **OneLake catalog**. Do not start a trial or create items yet.
 
 If you cannot sign in, are redirected to a licensing/signup flow, or cannot
-access the approved tenant, stop and contact the Fabric administrator.
+access the same tenant as the subscription selected in Step 03, stop and contact
+the Fabric administrator.
 Azure portal access does not prove Fabric access.
 A Fabric/Power BI per-user license does not supply Spark capacity by itself.
 The accelerator requires an active supported F capacity in addition to user access.
@@ -513,7 +535,8 @@ Ask your Azure/Fabric/network owners to confirm:
 * The selected capacity can run Spark and its owner approves the test workload.
 * Azure Key Vault operations, Fabric compute, optional new capacity, and Esri
   licensing costs are approved.
-* A dedicated group and globally unique vault name from Step 05 are approved.
+* The dedicated group and globally unique vault name from Step 05 meet your
+  organization's naming and resource-placement rules.
 
 See/expect: confirmations from the owners. Provider metadata and capacity
 visibility do not prove Azure quota, deny-policy clearance, licensing or
@@ -525,7 +548,7 @@ Use this request if you are missing approvals:
 > I am testing the Fabric GeoAnalytics deployment accelerator as
 > `<my-work-account>` in tenant `<tenant-guid>` and subscription
 > `<subscription-guid>`. Please confirm or arrange: subscription deployment
-> and dedicated resource-group/Key Vault permissions; vault
+> and dedicated resource-group/Key Vault/private-network/DNS permissions; vault
 > `roleAssignments/write`; KeyVault and Network providers registered (Fabric
 > provider only for new capacity); permission for
 > my user to create a workspace and Fabric items; workspace assignment to

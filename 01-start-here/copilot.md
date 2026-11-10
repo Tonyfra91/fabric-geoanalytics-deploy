@@ -66,7 +66,8 @@ Check that you have, or know whom to ask for, the following:
   Azure CLI, Bicep and Python
 * A GitHub account with approved Copilot access and available usage allowance
 * Your work/school Azure/Fabric deployment user, tenant GUID and subscription GUID
-* Approved subscription deployment and vault role-assignment permissions
+* Permission to run subscription deployments, create the dedicated resource
+  group/private Key Vault/networking, and create the vault role assignment
 * Registered `Microsoft.KeyVault` and `Microsoft.Network` providers;
   `Microsoft.Fabric` only for explicitly approved new-capacity creation
 * Permission to create a dedicated Fabric workspace and Fabric items
@@ -79,6 +80,15 @@ Check that you have, or know whom to ask for, the following:
 Your GitHub Copilot account can differ from your Azure/Fabric account.
 The Azure browser, Fabric browser and Azure CLI must all use the **same**
 deployment user/tenant. A Copilot plan supplies neither Azure nor Fabric access.
+
+Choose a non-production/test Azure subscription where you can create the
+Fast Pass resources. Follow
+[manual Step 03](./manual.md#step-03-choose-the-user-tenant-and-azure-subscription)
+to select it and Step 04 to verify the required permissions. If your organization
+requires Azure deployment approval, use the subscription your Azure administrator
+has approved for this evaluation. If you are unsure which subscription your
+organization allows you to use, stop here and confirm the subscription with
+your Azure administrator before continuing.
 
 You do not need to collect every ID before installing the tools. Continue
 with local preparation below; FP08 helps you find the values and confirm
@@ -299,7 +309,8 @@ before approving it.
 If a tool is missing, it should stop and give installation instructions, not
 silently install software or change organization policy.
 
-If Azure CLI is not signed into the approved account, Copilot gives you
+If Azure CLI is not signed into the deployment account selected in Step 03,
+Copilot gives you
 sign-in commands. **You** run them in the visible terminal and complete
 browser/Windows sign-in and MFA. Follow
 [manual Step 03](./manual.md#step-03-choose-the-user-tenant-and-azure-subscription).

@@ -477,6 +477,26 @@ if ($MyInvocation.InvocationName -ne '.') {
                 throw "Private Azure entry or same-template Load file fallback is missing in $Path."
             }
         }
+        $PreparationGuide = (Get-Content -LiteralPath (Join-Path $RepositoryRoot '01-start-here\manual.md') -Raw) -replace '\s+', ' '
+        foreach ($Requirement in @(
+            'Select the Azure subscription where you want Fast Pass to deploy its resources.',
+            'Use a non-production/test subscription where you have the required permissions',
+            'If your organization requires Azure deployment approval',
+            'If you are unsure which subscription your organization allows you to use, stop here and confirm the subscription with your Azure administrator before continuing.',
+            'subscription deployments', 'dedicated resource group', 'private Key Vault',
+            'dedicated VNet/subnet', 'private endpoint', 'private DNS zone',
+            'Key Vault Secrets Officer', 'Microsoft.Authorization/roleAssignments/write',
+            'Contributor alone is insufficient'
+        )) {
+            if (-not $PreparationGuide.Contains($Requirement)) {
+                throw "Subscription selection or permission guidance is missing: $Requirement"
+            }
+        }
+        if ($ButtonGuide -notmatch 'subscription whose name and ID you recorded' -or
+            $ButtonGuide -notmatch 'Stop if the\s+subscription does not match your note') {
+            throw 'Azure deployment must reuse the subscription selected during preparation.'
+        }
+        Write-Host 'PASS: Customer subscription selection, uncertainty stop, resource permissions and deployment target continuity.'
         $RunGuide = Get-Content -LiteralPath (Join-Path $RepositoryRoot '04-run-and-verify\manual.md') -Raw
         foreach ($Output in @(
             @{name='cells_daily';rows=3},@{name='arrival';rows=1},@{name='front_daily';rows=3},
@@ -496,6 +516,9 @@ if ($MyInvocation.InvocationName -ne '.') {
         foreach ($Path in $CustomerPaths) {
             foreach ($File in Get-ChildItem -LiteralPath (Join-Path $RepositoryRoot $Path) -Filter '*.md' -File -Recurse) {
                 $Content = Get-Content -LiteralPath $File.FullName -Raw
+                if ($Content -match '\bselect\s+(?:your|the)\s+approved\s+(?:Azure\s+)?(?:subscription|resource[ -]group|environment|tenant)\b|\bselect the subscription approved for the test\b') {
+                    throw "Unexplained target-selection instruction in customer guidance: $($File.Name)."
+                }
                 if ($Content -match 'hidden (?:terminal )?prompt|public-network Key Vault|public access with RBAC|ipywidgets|getpass') {
                     throw "Retired secret/network experiment remains in customer guidance: $($File.Name)."
                 }

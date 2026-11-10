@@ -43,8 +43,12 @@ Do not use the old public-access `v0.1.0` button.
 
 With either entry, sign in with the same Step 03 account, then:
 
-1. Select your approved subscription. This is a **subscription-scoped**
-   deployment; the template creates its own resource group.
+1. Select the subscription whose name and ID you recorded in
+   [Step 03](../01-start-here/manual.md#step-03-choose-the-user-tenant-and-azure-subscription)
+   and whose deployment permissions you checked in Step 04. Stop if the
+   subscription does not match your note. This is a **subscription-scoped**
+   deployment; the template creates its own dedicated resource group, not a
+   shared group.
 2. Fill the template fields using the table below. Azure may display camelCase
    names with spaces, such as “Deployment Name”.
 3. If Azure displays a separate deployment metadata **Region/Location** field,
@@ -55,7 +59,7 @@ With either entry, sign in with the same Step 03 account, then:
 
 | Template field           | Enter/select this for the existing-capacity path                             |
 | ------------------------ | ---------------------------------------------------------------------------- |
-| `deploymentName`         | Your approved ownership name from Step 05                                    |
+| `deploymentName`         | Your ownership name chosen in Step 05                                        |
 | `location`               | Azure region identifier matching the capacity from Step 09                   |
 | `resourceGroupName`      | Fresh dedicated group name from Step 05                                      |
 | `keyVaultName`           | Available globally unique vault name from Step 05                            |
@@ -64,7 +68,7 @@ With either entry, sign in with the same Step 03 account, then:
 | `capacityName`           | Leave the optional value null/unset; do not type an existing capacity's name |
 | `capacitySku`            | Leave default `F2`; ignored when `shouldCreateCapacity=false`                |
 | `capacityAdministrators` | Leave the empty JSON array `[]`; do not enter the Esri key here              |
-| `virtualNetworkName` | Keep derived `vnet-<deploymentName>` or use an approved dedicated name |
+| `virtualNetworkName` | Keep derived `vnet-<deploymentName>` or use a dedicated name that meets your organization's naming rules |
 | `virtualNetworkAddressPrefix` | Approved nonoverlapping IPv4 range; default `10.0.0.0/16` |
 | `privateEndpointSubnetName` | Dedicated subnet; default `snet-private-endpoints` |
 | `privateEndpointSubnetPrefix` | Subnet within that range; default `10.0.0.0/24` |
