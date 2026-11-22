@@ -371,4 +371,4 @@ function Test-Prerequisite {
 
 . (Join-Path $PSScriptRoot 'Notebook.ps1')
 . (Join-Path $PSScriptRoot 'Lifecycle.ps1')
-Export-ModuleMember -Function Read-CustomerConfig, Test-Prerequisite, Invoke-Deployment, Set-DeploymentNetwork, Set-GeoAnalyticsSecret, Test-GeoAnalyticsSecret, Invoke-Simulation, Publish-ResultsNotebook, Get-DeploymentStatus, New-DeployableNotebook, New-ResultsNotebook, New-PortalCustomerConfig
+Export-ModuleMember -Function Read-CustomerConfig, Test-Prerequisite, Invoke-Deployment, Set-DeploymentNetwork, Set-GeoAnalyticsSecret, Test-GeoAnalyticsSecret, Invoke-Simulation, Restore-SimulationResult, Publish-ResultsNotebook, Get-DeploymentStatus, New-DeployableNotebook, New-ResultsNotebook, New-PortalCustomerConfig

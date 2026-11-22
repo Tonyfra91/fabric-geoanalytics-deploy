@@ -660,8 +660,24 @@ function Invoke-NotebookJob {
         if ($Job.status -in @('Failed','Cancelled','Deduped')) { throw "Notebook job $($Job.status). Inspect run $Uri in Fabric for failure details." }
         if ($Job.status -notin @('NotStarted','InProgress','Completed')) { throw "Unexpected notebook job state: $($Job.status)" }
     } while ($Job.status -ne 'Completed')
-    # Exit values are currently exposed by a beta notebook-specific endpoint, not the GA scheduler response.
-    $Details = (Invoke-ServiceRequest -Uri "$Base/notebooks/$NotebookId/jobs/execute/instances/$($Job.id)?beta=true").Data
+    return (Get-NotebookJobResult -WorkspaceId $Manifest.workspaceId -NotebookId $NotebookId -JobId $Job.id)
+}
+
+function Get-NotebookJobResult {
+    <#
+    .SYNOPSIS
+        Reads an existing job's exit value without submitting or polling a new job.
+    #>
+    [CmdletBinding()]
+    [OutputType([object])]
+    param(
+        [Parameter(Mandatory)][string]$WorkspaceId,
+        [Parameter(Mandatory)][string]$NotebookId,
+        [Parameter(Mandatory)][ValidatePattern('\A[a-zA-Z0-9-]+\z')][string]$JobId
+    )
+    # Exit values are exposed by the notebook-specific endpoint, not the GA scheduler response.
+    $Uri = "https://api.fabric.microsoft.com/v1/workspaces/$WorkspaceId/notebooks/$NotebookId/jobs/execute/instances/${JobId}?beta=true"
+    $Details = (Invoke-ServiceRequest -Uri $Uri).Data
     if (-not $Details.properties.exitValue) { throw 'Completed job returned no exit value. Inspect the notebook run; outputs have not been verified.' }
     return ($Details.properties.exitValue | ConvertFrom-Json -AsHashtable -Depth 20)
 }
@@ -707,6 +723,111 @@ function ConvertTo-SimulationParameter {
     return @($Values.Keys | Sort-Object | ForEach-Object { @{name=$_;value=$Values[$_];type=$Allowed[$_]} })
 }
 
+function Test-SimulationResult {
+    <#
+    .SYNOPSIS
+        Rejects mismatched runs, unsafe output names, invalid counts, and incomplete results.
+    #>
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object]$Result,
+        [Parameter(Mandatory)][ValidatePattern('\A[a-zA-Z0-9_]{1,48}\z')][string]$RunId,
+        [ValidatePattern('\A[a-z][a-z0-9_]{0,23}\z')][string]$TablePrefix
+    )
+    $Expected = @('cells_daily','arrival','front_daily','grid_population_vulnerability','origin','vulnerability_summary')
+    if ($Result -isnot [hashtable] -or $Result.Count -ne 2 -or
+        'run_id' -cnotin @($Result.Keys) -or 'outputs' -cnotin @($Result.Keys) -or $Result.run_id -isnot [string] -or
+        $Result.run_id -cne $RunId -or $Result.outputs -isnot [hashtable] -or $Result.outputs.Count -ne $Expected.Count) {
+        throw 'Notebook exit value did not match the requested run and output contract.'
+    }
+    foreach ($Name in $Expected) {
+        $Output = $Result.outputs[$Name]
+        if ($Name -cnotin @($Result.outputs.Keys) -or $Output -isnot [hashtable] -or $Output.Count -ne 2 -or
+            'table' -cnotin @($Output.Keys) -or 'rows' -cnotin @($Output.Keys) -or
+            $Output.table -isnot [string] -or ($Output.rows -isnot [int] -and $Output.rows -isnot [long]) -or
+            $Output.rows -lt 0) {
+            throw "Notebook did not verify expected output: $Name"
+        }
+    }
+    $LowerRunId = $RunId.ToLowerInvariant()
+    if (-not $TablePrefix) {
+        $Pattern = '\A(?<prefix>[a-z][a-z0-9_]{0,23})_' + [regex]::Escape($LowerRunId) + '_origin\z'
+        if ($Result.outputs.origin.table -cnotmatch $Pattern) { throw 'Output table does not match the run ID and a safe table prefix.' }
+        $TablePrefix = $Matches.prefix
+    }
+    foreach ($Name in $Expected) {
+        if ($Result.outputs[$Name].table -cne "${TablePrefix}_${LowerRunId}_$Name") {
+            throw "Output table does not match the run ID and table prefix: $Name"
+        }
+    }
+    foreach ($Name in @('origin','grid_population_vulnerability','cells_daily','front_daily')) {
+        if ($Result.outputs[$Name].rows -eq 0) { throw "Required output is empty: $Name" }
+    }
+}
+
+function Restore-SimulationResult {
+    <#
+    .SYNOPSIS
+        Validates and persists the recorded completed simulation result without compute or secret access.
+    .PARAMETER Config
+        Configuration for the original deployment and interactive user.
+    .PARAMETER RunId
+        Expected run ID from the interrupted submission's evidence.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][hashtable]$Config,
+        [Parameter(Mandatory)][ValidatePattern('\A[a-zA-Z0-9_]{1,48}\z')][string]$RunId
+    )
+    $Manifest = Read-DeploymentManifest $Config
+    if ($Manifest.stage -ne 'Configured') { throw 'Deployment is incomplete. Recovery cannot skip provisioning milestones.' }
+    foreach ($Field in @('workspaceId','notebookId','lakehouseId')) {
+        $Id = [guid]::Empty
+        if (-not [guid]::TryParse($Manifest[$Field], [ref]$Id) -or $Id -eq [guid]::Empty) {
+            throw "Recovery requires a valid recorded $Field."
+        }
+    }
+    $Base = "https://api.fabric.microsoft.com/v1/workspaces/$($Manifest.workspaceId)"
+    $JobPrefix = "$Base/items/$($Manifest.notebookId)/jobs/instances/"
+    if ($Manifest.lastJobUri -isnot [string] -or
+        $Manifest.lastJobUri -cnotmatch ('\A' + [regex]::Escape($JobPrefix) + '(?<jobId>[a-fA-F0-9-]{36})\z')) {
+        throw 'Recorded job URI does not match the deployment workspace and notebook.'
+    }
+    $JobId = $Matches.jobId
+    $ParsedJobId = [guid]::Empty
+    if (-not [guid]::TryParse($JobId, [ref]$ParsedJobId) -or $ParsedJobId -eq [guid]::Empty) {
+        throw 'Recorded job URI has an invalid job ID.'
+    }
+    foreach ($Type in @('Notebook','Lakehouse')) {
+        $Id = $Manifest["$($Type.ToLowerInvariant())Id"]
+        $Item = (Invoke-ServiceRequest -Uri "$Base/items/$Id").Data
+        if ($Item.id -cne $Id -or $Item.type -cne $Type -or
+            $Item.description -cne "fabric-zombie-outbreak:$($Config.deploymentName)") {
+            throw "Recovery $Type ownership/type mismatch."
+        }
+    }
+    $Job = (Invoke-ServiceRequest -Uri $Manifest.lastJobUri).Data
+    if ($Job.id -cne $JobId -or $Job.status -cne 'Completed') {
+        throw 'Recorded job is not the expected completed job. Recovery submits no compute.'
+    }
+    $Result = Get-NotebookJobResult -WorkspaceId $Manifest.workspaceId -NotebookId $Manifest.notebookId -JobId $JobId
+    Test-SimulationResult -Result $Result -RunId $RunId
+    $Current = Read-DeploymentManifest $Config
+    foreach ($Field in @('lastJobUri','workspaceId','notebookId','lakehouseId','capacityId','stage')) {
+        if ($Current[$Field] -cne $Manifest[$Field]) { throw 'Deployment state changed during recovery. No result saved.' }
+    }
+    if (($Current.lastResult | ConvertTo-Json -Depth 20 -Compress) -cne
+        ($Manifest.lastResult | ConvertTo-Json -Depth 20 -Compress)) {
+        throw 'Recorded result changed during recovery. No result saved.'
+    }
+    $Current.lastResult = $Result
+    $Current.updatedAt = [datetime]::UtcNow.ToString('o')
+    Save-DeploymentManifest $Current
+    $Result | ConvertTo-Json -Depth 20 | Out-Host
+    Write-Host "Recovered verified result for run $RunId from job $JobId. No compute submitted; Results not republished."
+}
+
 function Invoke-Simulation {
     <#
     .SYNOPSIS
@@ -725,14 +846,8 @@ function Invoke-Simulation {
     $Preflight = Invoke-NotebookJob -Manifest $Manifest -Parameters @(@{name='CHECK_ONLY';value=$true;type='Boolean'})
     if ($Preflight.preflight -ne 'passed') { throw 'Runtime preflight did not confirm secret retrieval and GeoAnalytics authorization.' }
     $Result = Invoke-NotebookJob -Manifest $Manifest -Parameters $Parameters
-    $Expected = @('cells_daily','arrival','front_daily','grid_population_vulnerability','origin','vulnerability_summary')
-    if ($Result.run_id -ne $RunId -or $Result.outputs -isnot [hashtable] -or $Result.outputs.Count -ne $Expected.Count) {
-        throw 'Notebook exit value did not match the requested run and output contract.'
-    }
-    foreach ($Name in $Expected) {
-        if (-not $Result.outputs.ContainsKey($Name) -or -not $Result.outputs[$Name].table -or
-            -not $Result.outputs[$Name].ContainsKey('rows')) { throw "Notebook did not verify expected output: $Name" }
-    }
+    $TablePrefix = if ($InputValues.ContainsKey('TABLE_PREFIX')) { $InputValues.TABLE_PREFIX } else { 'zombie' }
+    Test-SimulationResult -Result $Result -RunId $RunId -TablePrefix $TablePrefix
     $Manifest.lastResult = $Result
     Save-DeploymentManifest $Manifest
     $Result | ConvertTo-Json -Depth 20 | Out-Host

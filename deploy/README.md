@@ -1,7 +1,7 @@
 ---
 title: Fast Pass operations reference
 description: Current commands, approval checkpoints, and recovery actions.
-ms.date: 2026-11-08
+ms.date: 2026-11-21
 ---
 
 ## Fast Pass operations
@@ -24,6 +24,7 @@ command and exclude that file from Git before use. All configuration is nonsecre
 | `configure-secret` | Prints secure Azure UI instructions; accepts no key | Customer enters the key privately and selects Create |
 | `verify-secret` | Checks enabled/current secret metadata through ARM | Does not retrieve the value or prove runtime access |
 | `run -ParametersPath .\deploy\config\smoke-run.json` | Private retrieval/authorization preflight, then bounded simulation | Separate paid-compute approval |
+| `recover-run -RunId <expected-run-id>` | Validates and saves the recorded completed simulation result | Approve local state update; no compute or secret retrieval |
 | `view-results` | Prepares only the owned Results notebook and verifies its source/bindings | Approve publication; no Spark job is submitted |
 | `status` | Reads capacity, bindings, endpoint and recorded job state | Does not execute notebooks |
 
@@ -65,6 +66,37 @@ chat, command arguments or logs. No local data-plane writer is supported.
 Keep public vault access Disabled. No template-deployment flag, new networking,
 roles or infrastructure are required by this credential template.
 
+## Recover an interrupted run
+
+If local polling or result retrieval fails after submission, inspect the recorded
+job before doing anything else. Do not rerun `run`: it submits new jobs.
+When the recorded simulation job is **Completed**, its result can be recovered:
+
+```powershell
+.\deploy.ps1 recover-run -RunId '<expected-run-id>'
+```
+
+Use the expected run ID from the original run evidence, not the previous
+`lastResult` if that result belongs to an older run. Recovery accepts only the
+manifest's recorded job in the original workspace/notebook. It verifies the
+interactive identity, notebook/Lakehouse ownership, job completion, expected run
+ID, six matching table names and integer counts. Required origin, grid and
+daily-state outputs must be nonempty; an empty vulnerability summary is allowed.
+All outputs must share a safe table prefix and the expected run ID.
+
+After explicit approval, recovery saves only the validated result and update
+timestamp through the nonsecret manifest writer. It preserves provisioning
+milestones, job URI and historical preview state. Recovery does not require
+active Spark capacity, submit or cancel jobs, retrieve secrets, republish Results,
+or change the original command's failure evidence. A changed recorded job/result,
+incomplete job, missing exit value or invalid output blocks persistence.
+
+Expect exit `0`, the six outputs and `Recovered verified result for run ...`.
+Recovery uses the same notebook-specific beta exit-value endpoint as normal
+execution; unavailable exit values remain a blocker. Do not copy a receipt into
+the manifest manually. Approve Results publication separately afterward, then
+complete the independent Lakehouse, map and SQL checks for the recovered run.
+
 ## View results
 
 After a verified bounded run, approve `.\deploy.ps1 view-results`.
@@ -92,6 +124,7 @@ A completed REST job alone does not establish visible-map acceptance.
 | Private runtime retrieval fails | Inspect approved endpoint, executing user's vault role and secret metadata; never enable public access |
 | GeoAnalytics authorization fails | Esri owner checks entitlement/key; do not print the key |
 | Job timeout | Inspect the recorded job before any new submission; timeout does not cancel it |
+| Completed simulation but stale `lastResult` | Approve `recover-run -RunId <expected-run-id>`; do not resubmit compute or manually edit state |
 | Map not visible | Open Results and Run all after approval; do not rerun the workload |
 | SQL tables missing | Refresh and wait for metadata synchronization; do not rerun the simulation |
 | Ownership/name collision | Stop and review the named resources; never adopt or overwrite unrelated items |

@@ -13,6 +13,8 @@ Lifecycle commands for the Fabric GeoAnalytics Fast Pass.
     Nonsecret customer configuration.
 .PARAMETER ParametersPath
     Optional JSON object of simulation parameters for run.
+.PARAMETER RunId
+    Expected run ID when recovering the recorded completed simulation job.
 .PARAMETER WhatIf
     Run Azure deployment what-if instead of provisioning.
 .PARAMETER AzureDeploymentName
@@ -24,10 +26,11 @@ Lifecycle commands for the Fabric GeoAnalytics Fast Pass.
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('help', 'validate', 'deploy', 'configure-network', 'configure-secret', 'verify-secret', 'run', 'view-results', 'status', 'remove')]
+    [ValidateSet('help', 'validate', 'deploy', 'configure-network', 'configure-secret', 'verify-secret', 'run', 'recover-run', 'view-results', 'status', 'remove')]
     [string]$Command = 'help',
     [string]$ConfigPath = (Join-Path $PSScriptRoot 'deploy\config\customer.json'),
     [string]$ParametersPath,
+    [ValidatePattern('\A[a-zA-Z0-9_]{1,48}\z')][string]$RunId,
     [string]$AzureDeploymentName,
     [switch]$WhatIf
 )
@@ -49,18 +52,26 @@ Bicep-led deployment automation for Azure and Microsoft Fabric resources
   .\deploy.ps1 configure-secret
   .\deploy.ps1 verify-secret
   .\deploy.ps1 run [-ParametersPath <file>]
+  .\deploy.ps1 recover-run -RunId <expected-run-id>
   .\deploy.ps1 view-results
   .\deploy.ps1 status
 
 Copy deploy\config\customer.sample.json to customer.json first.
 Deployment never executes a notebook. Removal is intentionally not automated.
 view-results prepares the Results notebook only; open it and Run all in Fabric.
+recover-run validates and saves the recorded completed job result; it submits no compute.
 '@
         }
         elseif ($Command -eq 'remove') {
             throw 'Removal is not implemented: automatic ownership-safe deletion has not been verified. See deploy\README.md.'
         }
         else {
+            if ($RunId -and $Command -ne 'recover-run') {
+                throw 'RunId is only supported for recover-run.'
+            }
+            if ($Command -eq 'recover-run' -and (-not $RunId -or $ParametersPath -or $WhatIf)) {
+                throw 'recover-run requires RunId and does not accept ParametersPath or WhatIf.'
+            }
             if ($AzureDeploymentName -and ($Command -ne 'deploy' -or $WhatIf)) {
                 throw 'AzureDeploymentName is only supported for deploy without WhatIf.'
             }
@@ -80,6 +91,7 @@ view-results prepares the Results notebook only; open it and Run all in Fabric.
                     Write-Host 'Secret metadata verified; runtime access is checked during run.'
                 }
                 'run' { Invoke-Simulation -Config $Config -ParametersPath $ParametersPath }
+                'recover-run' { Restore-SimulationResult -Config $Config -RunId $RunId }
                 'view-results' { Publish-ResultsNotebook -Config $Config }
                 'status' { Get-DeploymentStatus -Config $Config | ConvertTo-Json -Depth 20 | Out-Host }
             }

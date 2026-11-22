@@ -470,6 +470,215 @@ print("Delta output contract, read-back counts, and overwrite guard passed (mock
             Assert-Check 'Manifest schema rejects secret/unknown fields' (-not (Test-Json -Json ($Manifest | ConvertTo-Json -Depth 10) -SchemaFile $Schema -ErrorAction SilentlyContinue))
             Write-Host "Offline checks passed: $script:CheckCount"
         }
+        $Module = Import-Module (Join-Path $RepositoryRoot 'deploy\scripts\Accelerator.psm1') -Force -PassThru
+        & $Module {
+            $script:RecoveryCount = 0
+            function Assert-Check([string]$Name, [bool]$Condition) {
+                if (-not $Condition) { throw "FAIL: $Name" }
+                $script:RecoveryCount++
+                Write-Host "PASS: $Name"
+            }
+            $TemporaryDirectory = Join-Path ([IO.Path]::GetTempPath()) "geo-recovery-$([guid]::NewGuid().ToString('N'))"
+            $null = New-Item -ItemType Directory -Path $TemporaryDirectory
+            $script:StateDirectory = $TemporaryDirectory
+            try {
+                $script:RecoveryConfig = @{
+                    deploymentName='offline-recovery';subscriptionId='11111111-1111-4111-8111-111111111111'
+                    tenantId='22222222-2222-4222-8222-222222222222'
+                    resourceGroupName='rg-offline';keyVaultName='kv-offline-recovery'
+                }
+                $script:RecoveryManifest = @{
+                    deploymentName=$script:RecoveryConfig.deploymentName;deploymentVersion='0.1.0'
+                    subscriptionId=$script:RecoveryConfig.subscriptionId;tenantId=$script:RecoveryConfig.tenantId
+                    userObjectId='33333333-3333-4333-8333-333333333333'
+                    resourceGroupName=$script:RecoveryConfig.resourceGroupName;location='centralus'
+                    createdAt='2026-01-01T00:00:00Z';updatedAt='2026-01-01T00:00:00Z';stage='Configured'
+                    resources=@{Notebook=@{id='55555555-5555-4555-8555-555555555555';created=$true}}
+                    capacityId='44444444-4444-4444-8444-444444444444';capacityMode='existing'
+                    workspaceId='66666666-6666-4666-8666-666666666666'
+                    notebookId='55555555-5555-4555-8555-555555555555'
+                    lakehouseId='77777777-7777-4777-8777-777777777777'
+                    keyVaultName=$script:RecoveryConfig.keyVaultName
+                    keyVaultUri='https://kv-offline-recovery.vault.azure.net/';keyVaultSecretName='geoanalytics-api-key'
+                    lastResult=@{run_id='synthetic';outputs=@{}}
+                    lastPreviewJobUri='https://api.fabric.microsoft.com/v1/jobs/historical-preview'
+                }
+                $script:RecoveryBase = "https://api.fabric.microsoft.com/v1/workspaces/$($script:RecoveryManifest.workspaceId)"
+                $script:RecoveryJobId = '88888888-8888-4888-8888-888888888888'
+                $script:RecoveryManifest.lastJobUri = "$script:RecoveryBase/items/$($script:RecoveryManifest.notebookId)/jobs/instances/$script:RecoveryJobId"
+                $script:RecoveryPath = Join-Path $TemporaryDirectory 'offline-recovery.json'
+                $script:RecoveryCalls = [System.Collections.Generic.List[string]]::new()
+                function New-OfflineResult {
+                    $Outputs = @{}
+                    foreach ($Name in @('cells_daily','arrival','front_daily','grid_population_vulnerability','origin','vulnerability_summary')) {
+                        $Outputs[$Name] = @{table="zombie_offline_run_$Name";rows=$(if ($Name -eq 'vulnerability_summary') {0} else {1})}
+                    }
+                    return @{run_id='offline_run';outputs=$Outputs}
+                }
+                function script:Invoke-AzJson {
+                    param([string[]]$Arguments)
+                    switch ($Arguments -join ' ') {
+                        'account show' {
+                            return @{id=$script:RecoveryConfig.subscriptionId;tenantId=$script:RecoveryConfig.tenantId;user=@{type='user'}}
+                        }
+                        'ad signed-in-user show' {
+                            return @{id=$(if ($script:RecoveryScenario -eq 'identity') {'different-user'} else {$script:RecoveryManifest.userObjectId})}
+                        }
+                        default { throw 'Unexpected CLI request in recovery test.' }
+                    }
+                }
+                function script:Invoke-ServiceRequest {
+                    param([string]$Uri, [string]$Method='GET')
+                    $script:RecoveryCalls.Add("$Method $Uri")
+                    if ($Method -ne 'GET') { throw 'Recovery attempted a cloud mutation.' }
+                    if ($script:RecoveryScenario -eq 'read-failure') { throw 'Offline service read failed.' }
+                    foreach ($Type in @('Notebook','Lakehouse')) {
+                        $Id = $script:RecoveryManifest["$($Type.ToLowerInvariant())Id"]
+                        if ($Uri -eq "$script:RecoveryBase/items/$Id") {
+                            $Owner = if ($script:RecoveryScenario -eq 'ownership') {'unrelated-owner'} else {'fabric-zombie-outbreak:offline-recovery'}
+                            return @{Data=@{id=$Id;type=$Type;description=$Owner}}
+                        }
+                    }
+                    if ($Uri -eq $script:RecoveryManifest.lastJobUri) {
+                        $Status = if ($script:RecoveryScenario -in @('NotStarted','InProgress','Failed','Cancelled')) {$script:RecoveryScenario} else {'Completed'}
+                        $Id = if ($script:RecoveryScenario -eq 'wrong-job') {'different-job'} else {$script:RecoveryJobId}
+                        return @{Data=@{id=$Id;status=$Status}}
+                    }
+                    if ($Uri -eq "$script:RecoveryBase/notebooks/$($script:RecoveryManifest.notebookId)/jobs/execute/instances/$script:RecoveryJobId`?beta=true") {
+                        if ($script:RecoveryScenario -eq 'missing-exit') { return @{Data=@{properties=@{}}} }
+                        if ($script:RecoveryScenario -eq 'malformed-json') { return @{Data=@{properties=@{exitValue='not-json'}}} }
+                        if ($script:RecoveryScenario -eq 'race') {
+                            $Changed = Get-Content -LiteralPath $script:RecoveryPath -Raw | ConvertFrom-Json -AsHashtable
+                            $Changed.lastJobUri = "$script:RecoveryBase/items/$($Changed.notebookId)/jobs/instances/99999999-9999-4999-8999-999999999999"
+                            Save-DeploymentManifest $Changed
+                        }
+                        return @{Data=@{properties=@{exitValue=($script:RecoveryResult | ConvertTo-Json -Depth 20 -Compress)}}}
+                    }
+                    throw 'Unexpected service request in recovery test.'
+                }
+                function Assert-RecoveryFails([string]$Name, [string]$Pattern) {
+                    if ($script:RecoveryScenario -eq 'invalid-uri') {
+                        $script:RecoveryManifest | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $script:RecoveryPath
+                    } else {
+                        Save-DeploymentManifest $script:RecoveryManifest
+                    }
+                    $Before = (Get-FileHash -LiteralPath $script:RecoveryPath).Hash
+                    $Failure = $null
+                    try { Restore-SimulationResult -Config $script:RecoveryConfig -RunId offline_run } catch { $Failure = $_.Exception.Message }
+                    Assert-Check $Name ($Failure -and $Failure -match $Pattern -and (Get-FileHash -LiteralPath $script:RecoveryPath).Hash -eq $Before)
+                }
+                $script:RecoveryScenario = 'success'
+                $script:RecoveryResult = New-OfflineResult
+                Save-DeploymentManifest $script:RecoveryManifest
+                Restore-SimulationResult -Config $script:RecoveryConfig -RunId offline_run
+                $Saved = Get-Content -LiteralPath $script:RecoveryPath -Raw | ConvertFrom-Json -AsHashtable
+                Assert-Check 'Recovery persists six validated outputs through the real schema-checked temporary writer' (
+                    $Saved.lastResult.run_id -eq 'offline_run' -and $Saved.lastResult.outputs.Count -eq 6 -and
+                    $Saved.lastResult.outputs.vulnerability_summary.rows -eq 0)
+                Assert-Check 'Recovery preserves the recorded job URI' ($Saved.lastJobUri -eq $script:RecoveryManifest.lastJobUri)
+                Assert-Check 'Recovery preserves provisioning milestones' ($Saved.stage -eq 'Configured' -and $Saved.resources.Notebook.created)
+                Assert-Check 'Recovery preserves creation time' (
+                    ([datetime]$Saved.createdAt).ToUniversalTime() -eq ([datetime]$script:RecoveryManifest.createdAt).ToUniversalTime())
+                Assert-Check 'Recovery preserves historical preview state' ($Saved.lastPreviewJobUri -eq $script:RecoveryManifest.lastPreviewJobUri)
+                foreach ($Scenario in @('identity','ownership','NotStarted','InProgress','Failed','Cancelled','wrong-job','missing-exit','malformed-json','read-failure')) {
+                    $script:RecoveryScenario = $Scenario
+                    Assert-RecoveryFails "Recovery rejects $Scenario without changing state" '.+'
+                }
+                $script:RecoveryScenario = 'success'
+                foreach ($Change in @(
+                    @{Name='mismatched run';Action={$script:RecoveryResult.run_id='another_run'}},
+                    @{Name='missing output';Action={$script:RecoveryResult.outputs.Remove('arrival')}},
+                    @{Name='extra output';Action={$script:RecoveryResult.outputs.extra=@{table='extra';rows=1}}},
+                    @{Name='invalid result shape';Action={$script:RecoveryResult=@{preflight='passed'}}},
+                    @{Name='incorrect output casing';Action={$Value=$script:RecoveryResult.outputs.origin;$script:RecoveryResult.outputs.Remove('origin');$script:RecoveryResult.outputs.ORIGIN=$Value}},
+                    @{Name='negative count';Action={$script:RecoveryResult.outputs.arrival.rows=-1}},
+                    @{Name='string count';Action={$script:RecoveryResult.outputs.arrival.rows='1'}},
+                    @{Name='fractional count';Action={$script:RecoveryResult.outputs.arrival.rows=1.5}},
+                    @{Name='unsafe table';Action={$script:RecoveryResult.outputs.arrival.table='table; DROP TABLE grid'}},
+                    @{Name='another run table';Action={$script:RecoveryResult.outputs.arrival.table='zombie_other_run_arrival'}},
+                    @{Name='inconsistent prefix';Action={$script:RecoveryResult.outputs.arrival.table='other_offline_run_arrival'}},
+                    @{Name='empty required output';Action={$script:RecoveryResult.outputs.cells_daily.rows=0}},
+                    @{Name='unknown result field';Action={$script:RecoveryResult.extra='unexpected'}}
+                )) {
+                    $script:RecoveryResult = New-OfflineResult
+                    & $Change.Action
+                    Assert-RecoveryFails "Recovery rejects $($Change.Name) without changing state" '.+'
+                }
+                $script:RecoveryResult = New-OfflineResult
+                $OriginalUri = $script:RecoveryManifest.lastJobUri
+                $script:RecoveryScenario = 'invalid-uri'
+                foreach ($Uri in @(
+                    $OriginalUri.Replace('api.fabric.microsoft.com','untrusted.example'),
+                    $OriginalUri.Replace($script:RecoveryManifest.workspaceId,'99999999-9999-4999-8999-999999999999'),
+                    $OriginalUri.Replace($script:RecoveryManifest.notebookId,'99999999-9999-4999-8999-999999999999'),
+                    "$OriginalUri`?unexpected=true",
+                    "$OriginalUri`n",
+                    $null
+                )) {
+                    $script:RecoveryManifest.lastJobUri = $Uri
+                    if ($null -eq $Uri) { $script:RecoveryManifest.Remove('lastJobUri') }
+                    $BeforeCalls = $script:RecoveryCalls.Count
+                    Assert-RecoveryFails 'Recovery rejects missing or unrelated job URI before service calls' 'Recorded job URI'
+                    Assert-Check 'Rejected job URI issued no service request' ($script:RecoveryCalls.Count -eq $BeforeCalls)
+                }
+                $script:RecoveryManifest.lastJobUri = $OriginalUri
+                $script:RecoveryScenario = 'race'
+                Save-DeploymentManifest $script:RecoveryManifest
+                $Failure = $null
+                try { Restore-SimulationResult -Config $script:RecoveryConfig -RunId offline_run } catch { $Failure = $_.Exception.Message }
+                $Saved = Get-Content -LiteralPath $script:RecoveryPath -Raw | ConvertFrom-Json -AsHashtable
+                Assert-Check 'Recovery refuses a concurrent job change and preserves the newer state' (
+                    $Failure -match 'state changed' -and $Saved.lastJobUri -ne $OriginalUri -and $Saved.lastResult.run_id -eq 'synthetic')
+                Assert-Check 'Recovery issued only item/job GETs and no secret, publication or submission requests' (
+                    @($script:RecoveryCalls | Where-Object { $_ -notmatch '^GET https://api\.fabric\.microsoft\.com/v1/workspaces/[^/]+/(items/[^/]+(/jobs/instances/[^/?]+)?|notebooks/[^/]+/jobs/execute/instances/[^/?]+\?beta=true)$' }).Count -eq 0)
+                $script:RecoveryScenario = 'success'
+                $script:RecoveryResult = New-OfflineResult
+                foreach ($Name in $script:RecoveryResult.outputs.Keys) {
+                    $script:RecoveryResult.outputs[$Name].table = "custom_offline_run_$Name"
+                }
+                Test-SimulationResult -Result $script:RecoveryResult -RunId offline_run -TablePrefix custom
+                Assert-Check 'Shared validation preserves custom table-prefix support' $true
+                function script:Get-DeploymentStatus { param($Config) return @{stage='Configured'} }
+                function script:Test-SecretMetadata { param($Manifest) }
+                function script:Invoke-NotebookJob {
+                    param($Manifest,$Parameters)
+                    $script:SubmissionCount++
+                    if ($script:SubmissionCount -eq 1) { return @{preflight='passed'} }
+                    return $script:RecoveryResult
+                }
+                $ParametersPath = Join-Path $TemporaryDirectory 'run.json'
+                @{RUN_ID='offline_run';TABLE_PREFIX='custom';SIM_DAYS=3} | ConvertTo-Json | Set-Content -LiteralPath $ParametersPath
+                Save-DeploymentManifest $script:RecoveryManifest
+                $script:SubmissionCount = 0
+                Invoke-Simulation -Config $script:RecoveryConfig -ParametersPath $ParametersPath
+                $Saved = Get-Content -LiteralPath $script:RecoveryPath -Raw | ConvertFrom-Json -AsHashtable
+                Assert-Check 'Normal run retains its preflight/simulation sequence and shares validated persistence' (
+                    $script:SubmissionCount -eq 2 -and $Saved.lastResult.outputs.origin.table -eq 'custom_offline_run_origin')
+                $script:RecoveryResult.outputs.origin.rows = 0
+                Save-DeploymentManifest $script:RecoveryManifest
+                $Before = (Get-FileHash -LiteralPath $script:RecoveryPath).Hash
+                $script:SubmissionCount = 0
+                $Failure = $null
+                try { Invoke-Simulation -Config $script:RecoveryConfig -ParametersPath $ParametersPath } catch { $Failure=$_.Exception.Message }
+                Assert-Check 'Normal run rejects invalid results through shared validation without replacing lastResult' (
+                    $Failure -match 'Required output is empty' -and (Get-FileHash -LiteralPath $script:RecoveryPath).Hash -eq $Before)
+                $Cli = Join-Path $script:Root 'deploy.ps1'
+                $MissingConfig = Join-Path $TemporaryDirectory 'nonexistent-config.json'
+                foreach ($Arguments in @(
+                    @('recover-run'),
+                    @('status','-RunId','offline_run'),
+                    @('recover-run','-RunId','offline_run','-ParametersPath',$ParametersPath)
+                )) {
+                    $Output = & pwsh -NoProfile -File $Cli @Arguments -ConfigPath $MissingConfig 2>&1
+                    Assert-Check 'CLI rejects missing recovery ID or unsupported arguments before configuration access' (
+                        $LASTEXITCODE -eq 1 -and ($Output -join "`n") -match 'requires RunId|RunId is only supported')
+                }
+                Write-Host "Recovery checks passed: $script:RecoveryCount"
+            }
+            finally {
+                Remove-Item -LiteralPath $TemporaryDirectory -Recurse -Force
+            }
+        }
         exit 0
     }
     catch {

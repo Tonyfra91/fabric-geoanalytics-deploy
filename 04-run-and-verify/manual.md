@@ -84,8 +84,14 @@ If a job fails, open its run details and find the error. Common stop points:
 | Completed job but missing exit value                 | Inspect run details; beta exit-value retrieval is a documented accelerator limitation               |
 | Command timeout                                      | Check current job status before rerunning; it may still be active                                   |
 
+If local polling or result retrieval failed but the recorded simulation completed,
+follow [recovery instructions](../deploy/README.md#recover-an-interrupted-run).
+Separately approve `.\deploy.ps1 recover-run -RunId '<expected-run-id>'` to validate
+and save the existing job's outputs without resubmitting compute. It cannot recover
+a failed or incomplete job and does not republish Results.
+
 Next: [Step 23](#step-23-open-the-six-tables-and-onelake-receipt) only after
-terminal success, not merely a green browser job.
+normal execution or approved recovery exits `0`, not merely a green browser job.
 
 ### Step 23 Open the six tables and OneLake receipt
 
