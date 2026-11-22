@@ -175,15 +175,49 @@ command**, not another Azure foundation deployment. No automatic rollback occurs
 
 #### If endpoint approval is pending
 
-The Azure/network owner opens the deployed Key Vault > **Networking >
-Private endpoint connections**. Select the request matching the reported
-Fabric endpoint/workspace, verify its target is this vault (`vault` subresource),
-then select **Approve**. Do not approve unrelated requests.
+**Do this now in PowerShell**, read the nonsecret checkpoint and actual
+vault connection metadata (use your alternate config path if applicable):
 
-After that action:
+```powershell
+$Config = Get-Content .\deploy\config\customer.json -Raw | ConvertFrom-Json
+$Manifest = Get-Content ".\deploy\state\$($Config.deploymentName).json" -Raw | ConvertFrom-Json
+$Manifest.workspaceId
+$Manifest.managedPrivateEndpoint | ConvertTo-Json -Depth 10
+"Candidate Fabric portal identifier: $($Manifest.workspaceId).mpe-$($Manifest.keyVaultName)"
+az keyvault show --name $Manifest.keyVaultName --resource-group $Config.resourceGroupName --query 'properties.privateEndpointConnections[].{connectionId:id,privateEndpointId:properties.privateEndpoint.id,status:properties.privateLinkServiceConnectionState.status,description:properties.privateLinkServiceConnectionState.description}' --output json
+```
+
+The GUID prefix is the **Fabric workspace ID**, not the vault ID or job ID.
+The lifecycle's managed endpoint name is `mpe-<vault-name>`. Derive the candidate
+from the verified workspace/vault, then compare with the actual ARM
+`privateEndpointId` and connection row. Azure can generate a different connection
+resource name; do not promise the candidate string is universal. Stop if it
+does not match until the Azure/network owner verifies the actual request.
+
+| Row in the deployed vault | Identity to verify | Action |
+| ------------------------- | ------------------ | ------ |
+| Azure foundation, typically `pe-<vault-name>` | Azure deployment `keyVaultPrivateEndpointId` and dedicated VNet | Usually already Approved; this does not approve Fabric |
+| Fabric, observed as `<workspace-guid>.mpe-<vault-name>` | Verified workspace GUID, managed endpoint name, actual ARM private-endpoint identifier, this vault/`vault`, request description `Fabric GeoAnalytics Fast Pass access to Key Vault` | Select only the matching Pending row |
+
+**Do this now in Azure portal:** the authorized Azure/network owner opens the
+deployed **Key Vault > Networking > Private endpoint connections**, selects
+only the verified **Pending Fabric** row, opens its details to verify the target,
+then selects **Approve** and confirms the approval dialog. Do not select-all,
+approve unrelated requests, or select the already Approved foundation row.
+The vault is the container; these are its connection rows.
+Expected: that Fabric row becomes Approved. Stop if identity or status is unclear.
+
+After that action, return to Chat if using Copilot, report approval, and approve
+network-only resume separately. On the manual route run in PowerShell:
 
 ```powershell
 .\deploy.ps1 configure-network
+```
+
+Expected: activation **Succeeded** and approval **Approved**. Stop otherwise.
+Then obtain separate approval for remaining Fabric finish; run in PowerShell:
+
+```powershell
 .\deploy.ps1 deploy -AzureDeploymentName '<same-portal-deployment-record-name>'
 ```
 
@@ -258,7 +292,12 @@ verified, skip another deployment and continue below.
 2. Select **Build your own template in the editor**, then **Load file**.
    Load [secret-setup.azuredeploy.json](../deploy/secret-setup.azuredeploy.json)
    from this checkout and select **Save**. This file contains no credential.
-3. Select the printed subscription and **existing** resource group. Set
+3. Select the printed subscription and **existing** resource group. The dropdown
+   commonly labels subscriptions by **name**, not GUID. Compare both name and ID
+   with Step 03; verify at **Azure > Subscriptions > selected subscription >
+   Overview**. If the printed instructions contain only the ID, use that page
+   to resolve the matching name. Stop on mismatch; a matched subscription is
+   not yet proof that secret entry succeeded. Set
    `keyVaultName` to the printed vault name; do not create a new group or vault.
 4. Enter the authorized Esri credential only in the masked
    **Geo Analytics Api Key** (`geoAnalyticsApiKey`) parameter field.
@@ -270,6 +309,11 @@ verified, skip another deployment and continue below.
 6. Select **Create** once and wait for **Deployment succeeded**. Do not resubmit
    while a deployment is running or after an ambiguous failure.
 7. Return to PowerShell and verify metadata:
+
+   On the Copilot route, instead return to **Chat**: “The secure secret deployment
+   succeeded. Approve verify-secret in the terminal for ARM metadata only; do not
+   retrieve the key or execute Spark.” Approve the matching tool request once;
+   do not also execute the command manually.
 
 ```powershell
 .\deploy.ps1 verify-secret

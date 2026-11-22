@@ -53,6 +53,7 @@ Use your own account, resource names and IDs wherever an example is shown.
 You will run the demo's spatial simulation from an Atlanta starting point:
 a grid of hexagonal cells (H3), movement between nearby cells and daily spread.
 Step 25 adds real US population and social-vulnerability data.
+Step 25 is optional; the synthetic acceptance is the completion contract.
 The first run is smaller than the source demo so you can check the setup
 before using more compute.
 
@@ -153,6 +154,11 @@ git clone https://github.com/Tonyfra91/fabric-geoanalytics-deploy.git
 Set-Location .\fabric-geoanalytics-deploy
 Get-Location
 Get-ChildItem
+git rev-parse --show-toplevel
+git status --short
+Test-Path .\.git
+Test-Path .\deploy.ps1
+Test-Path .\Initialize-Experience.ps1
 .\Get-DemoNotebook.ps1
 ```
 
@@ -166,6 +172,13 @@ Pinned upstream notebook installed locally. Do not add it or generated notebook 
 If it is already present with the correct hash, the message is
 `Pinned demo notebook already present.` This download is local source
 preparation, not a Fabric import. You have not created cloud resources.
+Location and Git top-level must identify the selected root; file checks must
+be `True`. Stop if the folder is empty or the clone cannot be verified.
+For a fresh independent installation use a new isolated checkout and fresh
+names/configuration; for resume retain the original clone and state. In VS Code
+open only that root (remove other roots from the workspace, not from disk).
+Do not reset/discard another checkout's changes or repeat verified root checks
+unless the terminal/workspace changes.
 Use the current checkout for this walkthrough and its compiled private Azure
 template. The old `v0.1.0` button is not the private Fast Pass entry.
 
@@ -178,7 +191,7 @@ Run the offline checks:
 ```
 
 See/expect: `HTTP compatibility checks passed: 27`, `Offline checks passed: 61`,
-`Experience checks passed: 35`, `Bicep template compatibility checks passed: 9`,
+`Experience checks passed: 37`, `Bicep template compatibility checks passed: 9`,
 the portal/documentation contract PASS message, and
 `Portal template matches Bicep source.` These tests use cloud mocks;
 they do not certify your permissions or tenant.
@@ -537,6 +550,20 @@ Ask your Azure/Fabric/network owners to confirm:
   licensing costs are approved.
 * The dedicated group and globally unique vault name from Step 05 meet your
   organization's naming and resource-placement rules.
+
+**Do this now in PowerShell**, for read-only subscription inventory:
+
+```powershell
+az network vnet list --query '[].{name:name,group:resourceGroup,prefixes:addressSpace.addressPrefixes}' --output json
+```
+
+Compare the exact proposed VNet/subnet CIDRs with these networks, including the
+earlier demo, then ask the network owner to check organizational allocations and
+connected networks too. Subscription visibility is not a global allocation check.
+Record approved replacement ranges and subnet containment. Stop on overlap or
+missing owner approval; fresh names alone do not make default CIDRs safe.
+Use the [FP08 approval matrix](./copilot.md#approval-matrix-before-fp09) to record
+owners and evidence for the manual route too.
 
 See/expect: confirmations from the owners. Provider metadata and capacity
 visibility do not prove Azure quota, deny-policy clearance, licensing or

@@ -54,6 +54,11 @@ The adapter leaves the local original unchanged. It builds a separate workload
 that removes author resource bindings, cached outputs, and ArcGIS publication;
 adds runtime Key Vault retrieval; supplies small simulation defaults; and writes
 six Delta outputs with WKT geometry and a receipt.
+The included Results notebook renders only the bounded supported demo geometry.
+WKT is not automatically compatible with an external mapping workload.
+Optional [Maps exploration](../05-next-steps/README.md#explore-interactive-mapping)
+needs separate availability, licensing and ingestion checks; no publishing or
+Sean-identical result is claimed.
 
 The upstream demo remains the authority for its simulation logic.
 Neither its fictional model nor this deployment experience is a claim of

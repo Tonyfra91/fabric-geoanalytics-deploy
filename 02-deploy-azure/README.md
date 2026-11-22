@@ -26,6 +26,10 @@ private compiled template in **Custom deployment**. Manual **Load file** using
 the same checkout's compiled JSON remains the supported fallback.
 Enter the reviewed parameters, review costs and select **Create**.
 Copilot does not press Create for you.
+The portal may mark nullable `capacityName` required. If blank is blocked with
+`shouldCreateCapacity=false`, use `unusedcapacity`, ignored only with false.
+Do not type literal `null`; no portal fix is claimed. Review literal network
+names and nonoverlapping CIDRs rather than accepting expression/default values.
 
 ### See
 
@@ -43,5 +47,10 @@ After verifying Azure success and outputs, open
 [03 Finish Fabric](../03-finish-fabric/README.md).
 If Azure reports an error, resolve it before continuing. The guide explains
 which details to check and when to ask your administrator for help.
+
+**Do this now in Chat:** “Azure shows Deployment succeeded. The subscription
+deployment record name is `<actual-record-name>`. Read and verify that deployment;
+do not redeploy Azure. Continue to 03 Finish Fabric / FP10.”
+Expected: verification and an initialization proposal; stop on any mismatch.
 
 [Previous: 01 Start here](../01-start-here/README.md)

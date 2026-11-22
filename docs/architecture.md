@@ -11,6 +11,13 @@ For implementation details, open the
 [engineering validation notes](../engineering/validation-notes.md#architecture-details)
 or choose a section below.
 
+For current commands and completed-job recovery, use the
+[operations reference](../deploy/README.md).
+The synthetic completion contract remains bounded Runtime 1.3 acceptance;
+the optional Tampa reference required recovery after a local DNS failure.
+Historical NOT RUN/blocked notes describe their checkpoint, not today's status.
+Runtime 2.0, unattended/other-identity execution and production use remain unvalidated.
+
 ## Separate the resource planes
 
 See [how Azure and Fabric setup are separated](../engineering/validation-notes.md#separate-the-resource-planes).

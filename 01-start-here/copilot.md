@@ -21,8 +21,8 @@ below. Copilot helps you check them, but cannot grant access or supply a license
 The [manual walkthrough](./manual.md) is the detailed screen-by-screen
 reference and fallback, not a second deployment you need to run.
 
-Both routes set up the same model and small sample-data and Atlanta
-real-population runs. You will inspect results in Fabric tables and SQL,
+Both routes set up the same model and a small synthetic run, with an optional
+Atlanta real-population experiment. You will inspect results in Fabric tables and SQL,
 not Sean's original map or optional ArcGIS publication. See
 [what the test reproduces](./manual.md#what-this-test-reproduces).
 
@@ -40,6 +40,12 @@ not Sean's original map or optional ArcGIS publication. See
 Keep **Manual permissions** enabled and review each command before approving it.
 The skill tells Copilot how to help; it does not prevent it from making a
 mistake. Do not select blanket approval or unattended permissions.
+
+**Do this now in Chat** when a command is proposed: reply with approval for
+that exact command and scope, then approve its matching terminal tool request.
+Copilot executes it in a PowerShell terminal; Chat is not a shell. Do not also
+run it manually. Sign-in/MFA and private key entry remain your actions.
+Expected: one execution. Stop if the target or arguments differ.
 
 ### Fast Pass sequence
 
@@ -164,6 +170,13 @@ If a clone already exists, open it, inspect its Git status, and update a clean
 checkout deliberately. Do not reset/discard another person's changes.
 If **Git: Clone** is missing, fix Git installation and restart VS Code.
 
+For a **fresh installation**, clone into a new isolated folder; do not reuse
+the earlier demo's configuration/state or infer readiness from its success.
+For **resume**, use the original clone/configuration and the
+[read-only resume checkpoint](../04-run-and-verify/copilot.md#fp16-finish-with-evidence-or-resume-safely).
+In a multi-root workspace, use **Remove Folder from Workspace** for the old
+checkout, or open the fresh root alone. This does not delete its files.
+
 ## FP04 Sign into GitHub Copilot
 
 | Checkpoint | Instruction                                                                |
@@ -210,9 +223,18 @@ Reference: [Official Copilot setup](https://code.visualstudio.com/docs/setup/cop
 $PSVersionTable.PSVersion
 Get-Location
 Test-Path .\deploy.ps1
+git rev-parse --show-toplevel
+git status --short
+Test-Path .\.git
+Test-Path .\Initialize-Experience.ps1
+Test-Path .\.github\skills\fabric-geoanalytics-fast-pass\SKILL.md
 ```
 
-See/expect: `Major` at least `7`, the cloned repository folder, and `True`.
+See/expect: `Major` at least `7`, location and Git top-level equal to the
+chosen checkout, and all file checks `True`. An empty folder or missing Git
+metadata is a blocker even if cloning was reported successful. Stop and open
+the actual clone. Once verified, do not repeat these checks at every checkpoint
+unless the root/session changes.
 If the terminal is PowerShell 5.1, run `pwsh` or select the installed
 PowerShell 7 profile, then check again.
 
@@ -337,10 +359,43 @@ See/expect: tool/test results, account/capacity checks, and a checkpoint table:
 | `BLOCKED`      | A failure or unavailable prerequisite prevents progress           |
 | `NOT RUN`      | The stage has not happened                                        |
 
-The local checks should report 27 HTTP compatibility checks, 46 accelerator
-checks and 35 handoff checks, plus documentation/template checks. The separate
-managed private endpoint suite reports 35 checks.
+The local suites should pass their HTTP compatibility, accelerator, handoff,
+documentation/template and managed private endpoint checks. Counts change
+with regressions; use the suite's final PASS and exit code, not historical totals.
 These confirm the files are ready;
 you still need to confirm your access and check the deployed results later.
 If an approval is missing, resolve it using
 [manual prerequisite instructions](./manual.md#step-04-confirm-azure-deployment-and-role-assignment-permissions).
+
+### Approval matrix before FP09
+
+FP08 is interactive preparation, not automatic approval of deployment or compute.
+Record nonsecret owner confirmation and scope in approved private notes:
+
+| Category | Responsible owner | Acceptable evidence | Read-only checks versus attestation |
+| -------- | ----------------- | ------------------- | --------------------------------- |
+| Azure deployment, RBAC, providers, policy and costs (`azureDeploymentAllowed`) | Azure subscription/RBAC and cost owners | Scoped active role/access review and explicit deployment/policy/cost approval | CLI checks identity/providers/names; policy, quota and role conditions need owner review |
+| Workspace and items (`workspaceCreationAllowed`) | Fabric tenant administrator | Effective settings for this user/group; workspace/item creation allowed | UI/API access alone does not prove creation policy |
+| Capacity assignment (`capacityAssignmentAllowed`) | Selected capacity owner | Capacity Admin/Contributor assignment rights and workload approval | API verifies GUID, F SKU, Active and region; visibility does not prove rights/headroom |
+| GeoAnalytics (`geoAnalyticsEnabled`) | Fabric tenant/capacity administrator | Effective integration enablement for selected capacity/user | Owner confirmation; authorization is tested later by preflight |
+| Entitlement (`esriEntitlement`) | Esri subscription owner | Active GeoAnalytics entitlement and authorized key available privately | No key inspection in Chat; generic basemap keys do not qualify |
+| Network allocation and source access | Network owner | Exact VNet/subnet CIDRs approved, subnet contained, no overlap; required outbound paths allowed | Read-only subscription VNet inventory is useful but not the organization's address-allocation inventory |
+
+**Do this now in Chat:** ask Copilot to inventory visible subscription VNet
+address spaces read-only, compare the exact proposed CIDRs, and show the result
+to the network owner. The default `10.0.0.0/16` can overlap an earlier demo.
+Obtain explicit approval for replacement ranges against organizational
+allocations/connected networks; do not guess unused space from an empty inventory.
+Stop on overlap, missing owner approval or unavailable evidence.
+
+**01 Start here is complete** only after this preparation is verified.
+**Do this now in the same Chat:**
+
+```text
+FP08 preparation is complete. Continue to 02 Deploy Azure / FP09.
+Show the reviewed portal parameter table with subscription name and ID,
+literal resource names and owner-approved CIDRs. Do not deploy or run compute.
+```
+
+Expected: the FP09 table. Deployment, Fabric finish, endpoint approval, secret
+entry, simulation and viewer compute each retain their separate approvals.

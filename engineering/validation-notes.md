@@ -1,7 +1,7 @@
 ---
 title: Fast Pass engineering validation notes
 description: Historical dogfood evidence, rejected experiments, and live-versus-repository validation boundaries.
-ms.date: 2026-11-04
+ms.date: 2026-11-22
 ---
 
 ## Engineering evidence - not the customer journey
@@ -11,21 +11,64 @@ commands and recommendations. They are not current setup instructions.
 Use the [customer journey](../README.md) and [current operations reference](../deploy/README.md)
 to complete Fast Pass. No customer needs to reproduce these experiments.
 
-The bounded synthetic run, private credential retrieval, authorization, six
-outputs, interactive Fabric map and SQL counts were validated. Real-population
-execution was not performed. New endpoint creation, pending approval/resume,
-live collisions and live multi-page inventory remain repository-tested only.
+### Current dogfood acceptance, November 20-22
 
-The repository refinement changes `view-results` to publication only, followed
+Evidence below is supplied execution output and user-confirmed UI acceptance,
+not independent cloud re-verification during this documentation revision.
+Private tenant/resource/job/run identifiers are intentionally omitted.
+
+| Scope | Inputs and outcome |
+| ----- | ------------------ |
+| Synthetic baseline | Runtime 1.3, existing F2, two days, 10 km, H3 6, seed 42, synthetic population, overwrite false; private retrieval/authorization, six outputs, visible Results map and matching SQL counts passed |
+| Optional Tampa reference | Runtime 1.3, existing F2, `27.9506, -82.4572`, three days, 10 km, H3 6, seed 42, real population, overwrite false; completed jobs recovered, state persisted, Results published and map/SQL user-confirmed |
+
+| Output | Synthetic | Optional Tampa |
+| ------ | --------- | -------------- |
+| `cells_daily` | 3 | 8 |
+| `arrival` | 1 | 3 |
+| `front_daily` | 3 | 4 |
+| `grid_population_vulnerability` | 17 | 17 |
+| `origin` | 1 | 1 |
+| `vulnerability_summary` | 0 | 5 |
+
+The Tampa submission CLI exited **1** after DNS interruption reaching Entra.
+Its existing preflight and simulation later completed; supported `recover-run`
+exited **0**, then status exited **0** with persisted Tampa `lastResult`.
+No resubmission or manual milestone/state bypass was reported. Separately
+approved Results publication verified the recovered run/bindings; the user
+confirmed map rendering and all six SQL counts. This is recovered acceptance,
+not a clean initial CLI success. Cloud outcome, CLI exit, persisted state and
+viewer binding are separate facts.
+
+Reported preflight/simulation durations were 3m15.370s and 7m14.596s.
+Per-run CU/dollar cost remains unmeasured: shared F2 daily billing and its delta
+cannot be attributed to Tampa because of shared workloads and billing lag.
+Runtime 2.0, Ana execution, nationwide source coverage, production readiness
+and exact reproduction of Sean's output were not validated.
+
+Fresh-checkout dogfood also exercised Pending Fabric endpoint approval and
+subsequent network-only resume/finish according to supplied output and user
+confirmation. Live collision and multi-page inventory behavior remains untested.
+The portal required nullable `capacityName` even with creation false;
+`unusedcapacity` plus `shouldCreateCapacity=false` was followed by user-confirmed
+Azure success. Bicep forbids an explicit default on a nullable parameter, so no
+template/default UI fix is claimed. The immutable private button pin remains
+unchanged and matches the compiled checkout. Never infer new local edits are
+published through an existing button.
+
+The following older checkpoints retain their historical NOT RUN/blocked
+status **at that time**; they do not supersede this current acceptance.
+
+The earlier repository refinement changed `view-results` to publication only, followed
 by customer-controlled **Open Results > Run all > View map**. Historical REST
 preview evidence below remains valid, but preview submission is no longer the
-customer path. This revised command has repository tests; it has not been
-republished or rerun in the live environment during refinement.
+customer path. Its later supplied Tampa publication evidence is recorded above;
+no publication or compute was performed by this documentation revision.
 
 The old immutable `v0.1.0` Azure button contains a public-access vault template.
-The customer guide now loads the checked-out compiled private foundation into
-Azure Custom deployment instead. That revised foundation-entry UI still needs
-new-customer validation; no release/tag was changed.
+The customer guide uses the immutable private foundation button or checked-out
+compiled JSON through Load file instead. Required-field behavior is documented
+above; no new fix/release/tag or universal portal experience is claimed.
 
 The retired metadata-only [notebook fixture](./fixtures/setup-esri-api-key.ipynb)
 and [persistence inspector tests](./tests/Test-SecretSetup.py) preserve the
@@ -39,9 +82,9 @@ approved cloud cleanup.
 The original local writer failed with HTTP 403 / `ForbiddenByConnection`.
 The vault's public access was Disabled and the caller was not using an approved
 private link. A customer-authorized public-access update returned exit 0 but
-did not persist. The inherited `MCAPSGov Deploy and Modify Policies` assignment,
-through `KeyVault_PublicNetwork_Modify`, rewrote publicNetworkAccess to Disabled.
-This MCAPS/SFI observation explains the private-only boundary; an accepted
+did not persist. An inherited organizational policy assignment rewrote
+publicNetworkAccess to Disabled.
+This policy observation explains the private-only boundary; an accepted
 management request was not evidence that the requested setting took effect.
 
 The local client had no verified private route. Neither a Fabric endpoint
@@ -106,8 +149,9 @@ PowerShell entry point
   configure-network Fabric managed private endpoint only; stop for Azure approval
   run               Runtime authorization probe -> parameterized simulation
                     -> six Delta tables and a nonsecret OneLake result receipt
+  recover-run       Validate recorded completed job -> persist result; no compute
   view-results      Owned Results notebook -> bounded read-only spatial preview
-                    Separate paid job; no key retrieval or simulation rerun
+                    Publication only, then separately approved interactive Run all
   status            Read item metadata, environment settings, and last job
 ```
 
@@ -140,7 +184,8 @@ Required permissions and prerequisites:
 * Create role assignments at the vault scope (for example, an appropriately
   scoped Owner or Contributor plus Role Based Access Control Administrator).
   Contributor alone cannot grant the vault role.
-* Register `Microsoft.KeyVault` and `Microsoft.Fabric` before validation.
+* Register `Microsoft.KeyVault` and `Microsoft.Network` before validation;
+  `Microsoft.Fabric` only for explicitly approved new-capacity creation.
   The scripts never register providers automatically.
 * Have Fabric enabled and permission to create a workspace.
 * Have workspace Admin and capacity Contributor or capacity Admin permission
@@ -389,10 +434,9 @@ verified explicitly. The nonsecret outputs include the VNet, private endpoint,
 and private DNS zone resource IDs, not the secret or a fixed private address.
 
 > [!IMPORTANT]
-> This is the first repository implementation stage, not a completed private
-> Fast Pass. The unchanged Azure button remains pinned to `v0.1.0`; it does not
-> publish the modified local template. Do not redeploy the manually validated
-> foundation or replace existing networking to test these changes.
+> The historical `v0.1.0` public-access button is not the customer entry.
+> Use Step 13's immutable private button or Load file; a button never publishes
+> uncommitted local edits. Do not redeploy a validated foundation to test entry UI.
 
 The Azure private endpoint does not connect your computer or Fabric.
 Credential provisioning and local metadata verification use ARM; Fabric
@@ -759,16 +803,16 @@ No Environment recreation, republication or API-route change was needed.
 
 LIVE VALIDATED (bounded synthetic run): after separate customer compute
 approval, `.\deploy.ps1 run -ParametersPath .\deploy\config\smoke-run.json`
-exited 0. Preflight job `b803983b-dd76-4d05-a1dd-9b293cc45521` completed,
+exited 0. The recorded preflight job completed,
 including private Fabric `getSecret`, GeoAnalytics authorization and a geometry
-operation. Simulation job `eb32afa0-ee15-4298-8dd2-45f7344c1baf` then completed.
+operation. The recorded simulation job then completed.
 No retry or duplicate submission was made.
 
-Run `20261106T193642_498c8f` persisted six outputs and read them back:
+The recorded synthetic run persisted six outputs and read them back:
 cells_daily 3, arrival 1, front_daily 3, grid_population_vulnerability 17,
 origin 1, vulnerability_summary 0. The empty synthetic summary is allowed.
 The receipt path is
-`Files/zombie_outbreak/run_id=20261106T193642_498c8f/result.json`.
+`Files/zombie_outbreak/run_id=<synthetic-run-id>/result.json`.
 Post-run status exited 0 and its verified output counts matched the persisted
 manifest result. The workload keeps WKT geometry in Delta tables; the current
 customer viewing steps cover tables and SQL, not a rendered map.
@@ -783,17 +827,16 @@ The customer separately approved a credential-free Results notebook and one
 bounded preview of the completed run. Local viewer, rendering and regression
 tests passed. The first guarded live attempt stopped at readiness with an
 Environment HTTP 404; physical create requests and preview submissions were
-both zero. Fabric capacity metadata then reported `esriontologypoc`, F2,
+both zero. Fabric capacity metadata then reported the reused F2 capacity,
 Inactive. Fast Pass now shares the existing active-F-capacity validation with
 status, surfacing the customer resume action before typed Environment calls.
 No capacity lifecycle change or existing-asset update was performed.
 
 LIVE VALIDATED (read-only spatial preview): after the customer resumed the
 existing capacity, status reported Active and exited 0. The guarded preview
-created only `geo-atlanta-tonyfra-01 Results`
-(`1cbb43ae-cad6-40ac-bad1-d94b3ae4f4b3`), verified its saved source and existing
-Lakehouse/Environment bindings, and submitted one job
-(`96100e6c-ad2e-4a5d-9293-2b186a86c426`). It completed with exit 0 and returned
+created only the deployment-owned Results notebook, verified its saved source and existing
+Lakehouse/Environment bindings, and submitted one recorded preview job.
+It completed with exit 0 and returned
 the same simulation run ID, 17 grid rows, one arrival row and one origin row.
 The self-contained SVG was rendered and visually inspected in a local browser:
 17 study-grid cells, one red reached cell and a blue origin.
@@ -988,14 +1031,12 @@ Manual SQL endpoint and Fabric map visibility require customer verification.
 
 ### View the completed run
 
-After separate publication/compute approval, run `.\deploy.ps1 view-results`.
+After separate publication approval, run `.\deploy.ps1 view-results`.
 It creates or updates only the owned `<deploymentName> Results` notebook,
-verifies its saved definition, and submits a bounded read-only preview of
-`lastResult`. It never retrieves a credential or reruns the simulation.
-The preview job/result are persisted separately; `status` reports them.
-An active recorded preview blocks resubmission. It returns a self-contained
-SVG saved in the ignored local state folder and displays that map in the
-notebook output. See the numbered
+verifies its saved definition/bindings for `lastResult`, and submits no Spark job.
+Separately approve interactive **Open Results > Run all > View map** in Fabric.
+It never retrieves a credential or reruns the simulation. Historical preview
+job/result fields remain separate; an active historical preview blocks publication. See the numbered
 [viewing steps](../04-run-and-verify/manual.md#view-the-completed-spatial-result)
 for Fabric UI acceptance and the supported geometry/row limits.
 
@@ -1147,9 +1188,10 @@ After editing Bicep, regenerate the portal template:
 .\deploy\scripts\Build-Template.ps1
 ```
 
-The Azure button pins release `v0.1.0`. Updating `main` does not change
-that released deployment. A future release must update the button and be
-tagged after validation.
+The customer Azure button pins an immutable private-foundation commit;
+the legacy `v0.1.0` public-access release is unchanged and unsupported for this
+journey. Updating local files or `main` does not update either pin. Any future
+button revision needs published, validated source and maintainer approval.
 
 Once signed in and configured, check the target tenant without deploying:
 

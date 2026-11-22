@@ -44,6 +44,12 @@ For what each message means, use
 
 If preflight fails, no simulation should be submitted. If a command times out,
 Copilot must inspect the existing job and stop, not automatically resubmit.
+If the recorded simulation completed but local polling/result retrieval failed,
+separately approve `recover-run -RunId '<expected-run-id>'` as a terminal
+execution and local state update. Use the interrupted run's expected ID, not
+stale `lastResult`; follow the [recovery contract](../deploy/README.md#recover-an-interrupted-run).
+Require exit `0` and persisted results before proceeding. Do not alter state,
+skip milestones, or rerun compute to repair persistence.
 An empty synthetic vulnerability summary is allowed; required origin/grid/
 daily-state outputs must be nonempty.
 
@@ -69,24 +75,35 @@ Next view the map, then perform the independent SQL count check.
 
 First, separately approve publication of the owned Results notebook:
 
+**Do this now in Chat:** “Approve view-results publication for the displayed
+verified run ID. Execute once in the terminal; do not start Spark.”
+
 ```powershell
 .\deploy.ps1 view-results
 ```
 
 This creates or updates only the owned `<deploymentName> Results` notebook.
-It reads the existing verified run and renders a north-up map with the study
-grid, reached cells and origin. It never retrieves the key, writes tables or
+The published viewer reads the existing verified run and, when interactively
+executed, renders a north-up map with the study grid, reached cells and origin. It never retrieves the key, writes tables or
 reruns the simulation. Publication submits **no Spark job** and preserves
 simulation state. Repeating it can replace edits to that viewer.
 An existing historical preview job must finish before publication.
 
 Expect exit `0`, the verified run ID and Results URL. Then separately approve
 one interactive paid-compute run: **Open Results > Run all > View map**.
+Run IDs/table names change across experiments; workspace, Lakehouse, environment,
+Demo and Results item names do not. Check the viewer's saved run ID equals the
+new `lastResult`; an older viewer stays bound to its earlier run until
+separately republished. Publication and interactive execution are different approvals.
 Confirm the gray grid, red reached cells and blue origin in Fabric.
 A green job alone does not establish manual map acceptance.
 The map is a local projection, not the original ArcGIS basemap or dashboard.
 Finally use manual Step 24's six-table `COUNT_BIG` query and confirm every
 SQL count matches your receipt. Do not rerun the simulation to force metadata sync.
+**Do this now in Fabric SQL:** click the green **Run** above the pasted query.
+This read-only check proves SQL consumers can see the same six outputs Spark
+verified; no view or semantic model needs to be created. Expected: six receipt
+counts; stop acceptance on mismatch or missing tables.
 Tables may take time to appear. Tell Copilot when you can see them and whether
 all counts match. Keep the SQL check incomplete until you have checked it.
 You need no separate SQL database/client or ArcGIS publishing credentials.
@@ -100,7 +117,9 @@ You need no separate SQL database/client or ArcGIS publishing credentials.
 | See        | A new verified run ID/output set, or a clear `NOT RUN` status                                                                              |
 | Next       | Repeat [FP14](#fp14-read-the-actual-results-in-fabric-and-sql) for the new names, then [FP16](#fp16-finish-with-evidence-or-resume-safely) |
 
-This optional experiment was **NOT RUN** during end-to-end validation.
+This supplied Atlanta experiment was **NOT RUN** in the recorded dogfood.
+The separate optional Tampa reference passed after supported recovery; it does
+not establish Atlanta counts or guarantee source availability for another run.
 It uses real US population and social-vulnerability data as in the source demo,
 with Atlanta coordinates, three days, 10 km, H3 resolution 6,
 real population, seed 42, and overwrite disabled.
@@ -127,6 +146,9 @@ Reference: [manual Step 25](./manual.md#step-25-run-the-small-atlanta-real-popul
 
 You can decline this stage. Copilot then reports real-population validation
 as `NOT RUN`, not completed.
+For another small US city, use a separate untracked nonsecret input and the
+[optional scenario guidance](../05-next-steps/README.md#test-another-scenario);
+do not modify/stage baseline inputs or broaden the run automatically.
 
 ## FP16 Finish with evidence or resume safely
 
@@ -152,6 +174,10 @@ successful local checks alone do not confirm a working cloud deployment.
 
 To stop, select **Stop** in Chat. If a cloud job was already submitted, stopping
 Copilot is not a guarantee that job was cancelled. Check its current status.
+**Do this now in Fabric:** stop the interactive Results Spark session after
+map/SQL acceptance. Closing the browser does not stop capacity/resource charges.
+Job duration, CU consumption and delayed/shared billing are different evidence;
+do not attribute a daily bill delta to this run.
 
 To resume in a fresh chat, invoke the same skill and say:
 
@@ -169,6 +195,9 @@ another finish operation and ask about the next unverified secret/run stage.
 Cleanup is separately owner-approved and manual:
 [cleanup instructions](./manual.md#cleanup-and-troubleshooting).
 The skill deliberately does not automate deletion.
+No commit or push is required for completion. Any contributor branch, commit,
+push or PR needs explicit permission and reviewed source-only staging; never
+blanket-stage configuration, state, private evidence or upstream/generated notebooks.
 
 ## Continue to 05 Next steps
 

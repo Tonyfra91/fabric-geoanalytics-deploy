@@ -171,10 +171,14 @@ Do not deploy Azure until folder 01's prerequisites are confirmed.
 
 At [Step 13](./02-deploy-azure/manual.md#step-13-load-the-private-template-and-enter-the-azure-parameters),
 use the preferred **Deploy to Azure** button after completing prerequisites.
-It loads an immutable commit-pinned copy of the checkout's
-[compiled foundation](./deploy/azuredeploy.json) into Azure **Custom deployment**.
+It loads an immutable commit-pinned private foundation into Azure **Custom deployment**,
+not new local edits. The nullable ARM `capacityName` can appear required in portal:
+if blank is blocked with `shouldCreateCapacity=false`, enter `unusedcapacity`;
+it is ignored only with that toggle false.
 The supported fallback is **Build your own template in the editor > Load file**,
-using the same compiled JSON, then **Save**.
+using the checkout's [compiled foundation](./deploy/azuredeploy.json), then **Save**.
+Load file does not promise a different required-field experience. Do not type
+literal `null`; no portal UI fix is claimed.
 Review the subscription-scoped deployment, then select Create yourself.
 The old `v0.1.0` button is not the supported private-foundation entry.
 
@@ -208,9 +212,11 @@ Read 01-03 across the top, then 04-05 across the bottom. Click for full size.
 The numbers match the folders above. The diagram is an overview, not another
 set of deployment instructions.
 
-The synthetic path has been validated end to end, including the visible Fabric
-map and SQL counts. Optional real-population execution has **not been run** and
-is not required for completion.
+The Runtime 1.3/F2 synthetic path has been validated with a visible Fabric map
+and matching SQL counts. An optional bounded Tampa real-population experiment
+also passed after recovery of completed cloud jobs following a local DNS failure,
+not a clean initial CLI run. Neither experiment certifies other inputs,
+Runtime 2.0, another identity or production use. Real population is not required.
 
 ### Where you work at each stage
 
@@ -227,16 +233,21 @@ is not required for completion.
 * Fabric is configured on active F capacity, Runtime **1.3**, with correct bindings.
 * The managed private endpoint is **Succeeded / Approved**.
 * Private secret retrieval and GeoAnalytics authorization pass.
-* The bounded run exits **0** and six outputs pass Spark read-back.
+* The bounded run exits **0** (or supported recovery exits **0** after a recorded
+  local failure) and six outputs pass the verified result contract.
 * **Open Results > Run all > View map** shows the spatial result in Fabric.
 * All six SQL counts match that run's receipt; zero synthetic vulnerability-summary rows is valid.
 
 Save your run ID and use the [completion checklist](./04-run-and-verify/manual.md#acceptance-checklist).
+No commit or push is required. Stop interactive Fabric sessions when finished;
+closing Chat does not cancel cloud jobs or stop resource charges.
 
 ## About this guide
 
 This is a local Fast Pass v0.1 candidate for small, approved trials, not a production-ready solution.
-The new Azure button and Load file fallback still need new-customer UI validation.
+The existing-capacity portal dogfood succeeded with the documented
+`unusedcapacity` workaround. Neither that result nor offline checks certify
+every new-customer portal/Load file experience; no required-field UI fix is claimed.
 The legacy tag and its public-access template remain unchanged.
 Check the results in your own workspace using the
 [completion checklist](./04-run-and-verify/manual.md#acceptance-checklist).

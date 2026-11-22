@@ -10,6 +10,13 @@ New here? Start with [01 Start here](../01-start-here/README.md).
 Otherwise, open the [manual walkthrough](../01-start-here/manual.md)
 or choose your step below.
 
+Journey folders **01-05**, Copilot checkpoints **FP01-FP16** and manual
+**Steps 01-25** are separate numbering systems. Follow one route.
+**Do this now:** open the current manual step, act in its named location and
+check its expected result. Stop on failure; do not skip milestones or redeploy
+an existing foundation. Use a fresh isolated checkout for a separate installation
+and the original root/configuration/state for resume.
+
 ## Before you begin
 
 Continue at [this section in the numbered journey](../01-start-here/manual.md#before-you-begin).
