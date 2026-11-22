@@ -177,6 +177,23 @@ For **resume**, use the original clone/configuration and the
 In a multi-root workspace, use **Remove Folder from Workspace** for the old
 checkout, or open the fresh root alone. This does not delete its files.
 
+Cloning downloads a local copy; it does not create a new GitHub repository or
+automatically create a new branch. A second clone in a different folder still
+points to the same GitHub repository by default. Renaming that folder does not
+change this connection. Local edits stay local until committed and pushed.
+If permitted, a push to `main` from either clone updates the same published
+`main`; a new folder is not protection against this.
+No commit or push is needed for Fast Pass. See
+[what cloning changes](manual.md#what-cloning-changes) for the Git terms.
+
+If **Git: Clone** fails, or the folder is empty despite reported success,
+stop before FP04. Check **View > Output**, select **Git**, and locate the actual
+destination folder. Do not share credentials or sign-in codes from output.
+If the verified clone exists elsewhere, open it rather than cloning again.
+Otherwise use the [safe terminal fallback](manual.md#if-cloning-fails), then
+verify the root and required files before continuing. Never clone inside
+another repository, delete its files, or treat an unverified result as success.
+
 ## FP04 Sign into GitHub Copilot
 
 | Checkpoint | Instruction                                                                |

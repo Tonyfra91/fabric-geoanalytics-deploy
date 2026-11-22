@@ -56,6 +56,14 @@ template/default UI fix is claimed. The immutable private button pin remains
 unchanged and matches the compiled checkout. Never infer new local edits are
 published through an existing button.
 
+The clone experience exposed an onboarding gap, not an established user error.
+The selected new folder was initially empty despite reported clone success;
+terminal cloning into the empty destination allowed the test to continue.
+The original failure's cause was not established. The guide now explains that
+another local clone still targets the same GitHub repository, requires
+repository-root verification, and provides a guarded empty-folder fallback.
+The fallback instructions were not separately live-tested during this revision.
+
 The following older checkpoints retain their historical NOT RUN/blocked
 status **at that time**; they do not supersede this current acceptance.
 

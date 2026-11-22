@@ -144,14 +144,48 @@ Keep this PowerShell 7 window open for the remaining commands.
 
 Where to be: the local PowerShell 7 window; commands below enter the repo folder.
 
+#### What cloning changes
+
+You do not need prior GitHub experience to run Fast Pass.
+
+| Term | What it means here |
+| ---- | ------------------ |
+| Clone | A local copy of the existing GitHub repository, including its Git history |
+| `origin` | Git's default name for the GitHub repository that the clone came from |
+| Branch | A named line of changes, such as `main`; a new folder does not create one |
+| Commit | A saved revision in your local Git history, not an upload |
+| Push | An upload of commits to a branch in the connected GitHub repository, subject to permissions and repository rules |
+
+Two clones in different local folders normally share the same `origin`.
+Changing a folder name does not create a separate GitHub repository or change
+its connection. Creating a separate GitHub copy is a different action, such
+as a fork; it is not required for this walkthrough.
+
+> [!WARNING]
+> A fresh folder isolates local configuration, not GitHub publication.
+> If permitted, pushing `main` from either clone updates the same GitHub `main`
+> that customers download. No commit or push is required to complete Fast Pass.
+> For intentional contributions, use a reviewed feature branch and separate
+> approval to publish it.
+
 In PowerShell 7, choose a local folder where you have write access.
-The following commands create a folder under your user profile:
+The following commands create a parent folder under your user profile.
+If its `fabric-geoanalytics-deploy` child already exists, inspect it first:
+use the existing clone for resume, or choose a different parent folder for a
+fresh installation. Do not overwrite it.
 
 ```powershell
 New-Item -ItemType Directory -Path "$HOME\fabric-tests" -Force | Out-Null
-Set-Location "$HOME\fabric-tests"
+Set-Location "$HOME\fabric-tests" -ErrorAction Stop
 git clone https://github.com/Tonyfra91/fabric-geoanalytics-deploy.git
-Set-Location .\fabric-geoanalytics-deploy
+if ($LASTEXITCODE -ne 0) { throw 'Clone failed. Stop and follow the clone-recovery instructions.' }
+Set-Location .\fabric-geoanalytics-deploy -ErrorAction Stop
+```
+
+Continue only after cloning succeeds. Verify the repository before downloading
+the demo:
+
+```powershell
 Get-Location
 Get-ChildItem
 git rev-parse --show-toplevel
@@ -159,6 +193,13 @@ git status --short
 Test-Path .\.git
 Test-Path .\deploy.ps1
 Test-Path .\Initialize-Experience.ps1
+```
+
+Location and Git top-level must match the selected root, all file checks must
+be `True`, and neither Git command may report an error. Otherwise stop and use
+[clone recovery](#if-cloning-fails). Once verified, download the pinned demo:
+
+```powershell
 .\Get-DemoNotebook.ps1
 ```
 
@@ -181,6 +222,45 @@ Do not reset/discard another checkout's changes or repeat verified root checks
 unless the terminal/workspace changes.
 Use the current checkout for this walkthrough and its compiled private Azure
 template. The old `v0.1.0` button is not the private Fast Pass entry.
+
+#### If cloning fails
+
+A failed or unverified clone is a setup blocker, not evidence that you used
+Fast Pass incorrectly. Do not continue to deployment or blindly repeat cloning.
+
+1. Read the actual Git error. In VS Code, use **View > Output** and select
+   **Git**. Resolve missing Git, connectivity, authentication or policy errors
+   through the documented setup or your administrator. Do not bypass policy
+   or paste credentials, sign-in codes or tokens into chat.
+2. Inspect the selected destination, including any child folder created by Git.
+   If it already contains `.git`, `deploy.ps1` and `Initialize-Experience.ps1`,
+   open that root and run the verification commands above. Do not clone again.
+   If it contains an incomplete clone or other files, preserve them and stop
+   for help or choose a different, empty destination.
+3. If the VS Code action did not produce a usable clone and the underlying
+   error is resolved, use Git directly in PowerShell 7. Choose an existing empty
+   folder outside another repository. Replace the example path below with its
+   full path, run these inspection commands, and verify the displayed location:
+
+```powershell
+Set-Location -LiteralPath 'C:\path\to\your\empty-folder' -ErrorAction Stop
+Get-Location
+Get-ChildItem -Force
+```
+
+The folder must have no entries, including hidden files or `.git`. Then run:
+
+```powershell
+if (@(Get-ChildItem -Force).Count -ne 0) { throw 'Destination is not empty. Stop; do not delete or overwrite its contents.' }
+git clone https://github.com/Tonyfra91/fabric-geoanalytics-deploy.git .
+if ($LASTEXITCODE -ne 0) { throw 'Clone failed. Stop and inspect the Git error before continuing.' }
+```
+
+The final `.` means clone into the current empty folder instead of creating
+another child folder. Do not run both clone methods after one has succeeded.
+Run the repository-verification commands above, open that exact root in VS
+Code, and resume this step only when verification passes. Do not claim a
+successful clone from a notification alone.
 
 Run the offline checks:
 

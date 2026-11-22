@@ -110,6 +110,9 @@ need explicit permission for a feature branch, reviewed source-only staging,
 commit, push and PR publication; approval to run Fast Pass grants none of these.
 Keep configuration, state, receipts, private identifiers and upstream/generated
 notebooks out of committed content.
+Another local clone is not a separate GitHub repository or feature branch.
+Review [what cloning changes](../01-start-here/manual.md#what-cloning-changes)
+before publishing intentional contributor changes.
 
 For implementation details, see the optional
 [engineering evidence](../engineering/validation-notes.md#architecture-details).
