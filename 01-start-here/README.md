@@ -47,4 +47,12 @@ workload until those approvals are in place.
 After FP08 or manual Step 12 confirms that you are ready, open
 [02 Deploy Azure](../02-deploy-azure/README.md).
 
+**Do this now in the same Chat**, if using Copilot:
+“FP08 preparation is complete. Continue to 02 Deploy Azure / FP09 and show
+the reviewed portal parameter table. Do not deploy or run compute.”
+Expected: a parameter proposal, not a deployment. Stop if any prerequisite is unresolved.
+
+Folder **01** is a journey chapter; **FP08** is a Copilot checkpoint;
+manual **Step 12** is the alternative route's step. These numbers are not interchangeable.
+
 [Back to the story and journey overview](../README.md)

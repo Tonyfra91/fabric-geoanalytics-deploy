@@ -23,6 +23,13 @@ checked in Steps 03-12:
 subscription, ownership `deploymentName`, region, new group, unique vault,
 executing user's `userObjectId`, dedicated private-network names/ranges, and the capacity choice.
 An existing capacity remains the default. Review it against your private note.
+Use literal values for `virtualNetworkName`, `privateEndpointName`,
+`privateEndpointNetworkInterfaceName` and `privateDnsLinkName`, not displayed
+ARM expressions; replace default CIDRs with the network owner's approved ranges.
+For nullable `capacityName`, if portal rejects blank with
+`shouldCreateCapacity=false`, enter `unusedcapacity`. It is ignored only with
+false; do not type literal `null` or an existing capacity's name.
+This is a tested workaround, not a portal UI fix.
 The subscription name/ID and deployment user must match Step 03, with deployment
 permissions checked in Step 04 and naming, networking and cost requirements
 confirmed before continuing.
@@ -36,7 +43,8 @@ The immediately available fallback is **Build your own template in the editor >
 Load file**, using that same compiled JSON, then **Save**.
 With either entry, enter the reviewed fields and select **Review + create >
 Create** yourself. Do not use the old `v0.1.0` release button or change its
-immutable tag. The button's portal experience still needs live validation.
+immutable tag. The existing-capacity portal dogfood succeeded with the workaround above;
+broader new-customer UI behavior remains unvalidated.
 Copilot must not press Create for you or substitute CLI Azure deployment.
 
 See/expect: Azure **Custom deployment**, then deployment progress.
@@ -45,6 +53,8 @@ name and inspect Outputs as in
 [manual Step 14](./manual.md#step-14-record-azure-success-and-the-handoff-outputs).
 
 Tell Copilot:
+
+**Do this now in the same Chat**, not in the terminal:
 
 ```text
 Azure shows Deployment succeeded. The subscription deployment record name is
@@ -56,3 +66,5 @@ name unless it really is also the record name. Do not send keys/tokens.
 If Azure reports a failure, share the error with Copilot after removing
 private details. Wait for **Deployment succeeded** before continuing;
 a visible vault alone does not mean setup is complete.
+Expected: read-only verification followed by 03 Finish Fabric / FP10's local
+initialization proposal. Stop on mismatched outputs; do not approve redeployment.

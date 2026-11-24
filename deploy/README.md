@@ -30,6 +30,11 @@ command and exclude that file from Git before use. All configuration is nonsecre
 
 Prefix commands with `.\deploy.ps1`. Deployment success is not Fast Pass success:
 complete the [map and SQL acceptance checks](../04-run-and-verify/manual.md#acceptance-checklist).
+On the Copilot route, approve the exact scope in **Chat**, then the matching
+terminal tool request; Copilot executes in PowerShell. Do not also run manually.
+For a fresh installation use an isolated checkout and new names/configuration;
+for resume use the original root/config/manifest and read-only identity/status
+checks first. Stop on multi-root ambiguity or missing Git/required files.
 
 An optional CLI-only foundation path is `.\deploy.ps1 deploy -WhatIf`, then,
 after explicit Azure/Fabric provisioning approval, `.\deploy.ps1 deploy`.
@@ -42,13 +47,23 @@ must never be added to those parameters; use the separate secure UI step.
 Activation (`provisioningState`) and Azure approval (`connectionState.status`)
 are separate. Continue only with **Succeeded / Approved**.
 
-If approval is pending: Azure portal > the deployed Key Vault > **Networking >
-Private endpoint connections**. Select the request matching the expected Fabric
-endpoint and workspace, verify the vault and `vault` target, then the authorized
-Azure owner selects **Approve**. Do not approve unrelated connections.
+If approval is pending, use the
+[exact-row handoff](../03-finish-fabric/manual.md#if-endpoint-approval-is-pending).
+Derive `<verified-workspace-guid>.mpe-<vault-name>` and compare with the actual
+ARM private-endpoint/connection identifier; the observed form is not a universal
+name guarantee. The GUID prefix identifies the Fabric workspace.
+**Do this now in Azure portal:** the authorized owner opens the deployed vault >
+**Networking > Private endpoint connections**, verifies target vault/`vault`
+and request description, selects only that **Pending Fabric** row, then
+**Approve** and confirms the dialog. Do not select-all or select the already
+Approved foundation `pe-<vault-name>`; its approval does not approve Fabric.
 
-Run `.\deploy.ps1 configure-network` to resume only networking. Then rerun
+Return to Chat and obtain separate approval for
+`.\deploy.ps1 configure-network` to resume only networking. Expected:
+**Succeeded / Approved**; stop otherwise. Then separately approve
 `.\deploy.ps1 deploy -AzureDeploymentName '<same-record>'` to finish Fabric.
+Skip finish if already Configured; use status. Network-only resume does not
+finish the remaining Lakehouse/environment/notebook.
 Neither action needs another Azure foundation deployment. See
 [Stage 3](../03-finish-fabric/manual.md#step-18-run-the-fabric-finish-command-and-wait).
 
@@ -57,8 +72,12 @@ Neither action needs another Azure foundation deployment. See
 Follow [Step 20](../03-finish-fabric/manual.md#step-20-securely-provide-the-esri-api-key).
 Load [secret-setup.azuredeploy.json](./secret-setup.azuredeploy.json) into Azure
 Custom deployment at the existing resource-group scope. Enter the key only in
-the secure `esriApiKey` field. The template creates enabled `geoanalytics-api-key`
+the secure `geoAnalyticsApiKey` field. The template creates enabled `geoanalytics-api-key`
 in the existing private vault and has no outputs.
+The subscription selector usually shows its **name**: verify both name and ID
+against preparation at **Subscriptions > selected subscription > Overview**.
+After Azure success, return to Chat and separately approve terminal execution
+of `verify-secret` for ARM metadata only, not key retrieval or Spark.
 
 Do not inspect, screenshot or automate credential entry with Copilot. Never put
 the key in local configuration, parameter files, notebooks, widget state, Git,
@@ -113,6 +132,9 @@ single-ring POLYGON data, at most 5,000 grid and arrival rows each.
 
 Historical preview fields remain readable for existing deployment state.
 A completed REST job alone does not establish visible-map acceptance.
+Check the viewer run ID against persisted `lastResult` after every new/recovered
+run. Item names remain unchanged; the viewer stays on its saved older run until
+separately republished.
 
 ## Removal and troubleshooting
 
@@ -145,5 +167,15 @@ The old immutable `v0.1.0` button is not the current private foundation entry.
 Use the preferred commit-pinned **Deploy to Azure** button at
 [Step 13](../02-deploy-azure/manual.md#step-13-load-the-private-template-and-enter-the-azure-parameters).
 Manual Azure Custom deployment **Load file** using the same compiled foundation
-remains the fallback. Both entry experiences still need new-customer validation.
-No optional real-population run or production certification is claimed.
+remains the fallback. Existing-capacity portal dogfood succeeded with
+`unusedcapacity` while `shouldCreateCapacity=false`; the ARM field is nullable
+but portal can require it. Do not type literal null or infer the form is fixed.
+Broader new-customer/Load file UI behavior remains unvalidated.
+The synthetic baseline is complete; the optional bounded Tampa reference passed
+after completed-job recovery with user-confirmed map/SQL. See
+[anonymized evidence](../engineering/validation-notes.md#current-dogfood-acceptance-november-20-22).
+It is not clean first-pass CLI success or production/Runtime 2.0 certification.
+No per-run CU/dollar cost is established. Stop interactive Spark sessions when
+finished; stopping Chat does not cancel cloud jobs or remove charging resources.
+Cleanup, capacity changes and contributor branch/commit/push/PR actions require
+separate explicit permission. Customer completion requires no commit or push.

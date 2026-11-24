@@ -28,6 +28,11 @@ contains preparation only; it is not the complete deployment guide.
 Keep the whole repository open in VS Code and run commands at its root.
 The numbered folders organize instructions; do not change the terminal's
 working directory into one of them.
+Use one intended checkout. For a fresh repeat installation, confirm a separate
+checkout without customer configuration/state, new Azure/Fabric names, and
+explicitly approved capacity reuse. Preserve the old deployment. For a resume,
+verify existing state instead of repeating setup. Identify journey folder,
+FP checkpoint, and manual step separately.
 
 Use these existing entry points, not replacement provisioning logic:
 
@@ -46,6 +51,11 @@ ArcGIS publication, semantic models, or production certification.
 
 * Ask for one missing input or approval at a time. Give the user the action,
   expected screen/prompt/result, stop condition, and next action.
+* At each pause say **Do this now**, name **Chat**, **PowerShell terminal**,
+  **Azure portal**, or **Fabric portal**, and supply the exact action or chat
+  reply. A proposed command alone is not a handoff. In the Copilot route,
+  request approval in chat, execute through the terminal tool, and prevent a
+  duplicate manual invocation. Do not make the user infer where to act.
 * Maintain a chat checkpoint table with `VERIFIED`, `AWAITING YOU`,
   `BLOCKED`, or `NOT RUN`, and evidence. Do not create tracking Markdown files.
 * A starting request authorizes read-only checks and local preparation only.
@@ -90,7 +100,8 @@ ArcGIS publication, semantic models, or production certification.
    The accelerator was originally validated with Bicep CLI 0.48.1, not pinned
    to it. Missing tools or Bicep below the minimum are blockers with
    FP02/manual Step 01 installation instructions.
-3. Obtain the local pinned notebook with `.\Get-DemoNotebook.ps1`; run
+3. At FP08, after the user has completed FP06-FP07, obtain the local pinned
+   notebook with `.\Get-DemoNotebook.ps1`; run
    `.\deploy\tests\Test-Accelerator.ps1`,
    `.\deploy\tests\Test-Experience.ps1`, and
    `.\deploy\scripts\Build-Template.ps1 -Check`. Do not interpret mocks as live proof.
@@ -101,26 +112,40 @@ ArcGIS publication, semantic models, or production certification.
    Read capacity metadata, check provider registration and name availability.
    Default to an existing active supported F capacity; new capacity requires
    explicit administrator/cost/quota approval.
+   Show the exact VNet/subnet CIDRs. Check visible existing ranges read-only
+   and flag overlaps; subscription inventory does not prove organizational
+   allocation. Obtain network-owner confirmation for connected/reserved ranges.
 6. Confirm each manual prerequisite: user permissions, item/workspace creation,
    capacity assignment, effective GeoAnalytics setting, Esri entitlement/key
    availability, networking and cost/policy approval. Do not request the key itself.
 
 Stop at `BLOCKED` or `AWAITING YOU` for any unresolved requirement.
 When ready, proceed to the user-controlled Azure step, not a cloud tool call.
+State "01 Start here complete" and ask the user to reply in the same chat:
+"Continue to FP09. Show the exact Azure parameter table and stop for review.
+Do not create resources."
 
 ## Phase 2 Guide the private Azure template and verify its handoff
 
 1. Show the exact portal parameter table based on verified values and the user's
    signed-in object ID. Explain subscription deployment record name versus
    template ownership `deploymentName`.
+   Include subscription name and ID: the portal dropdown displays the name.
+   Give reviewed literal network names instead of unexplained ARM expressions.
+   Keep `shouldCreateCapacity=false` for reuse; `capacityName` is not the
+   existing capacity's selector. If the portal rejects a blank nullable
+   `capacityName`, use the documented `unusedcapacity` placeholder only while
+   `shouldCreateCapacity=false`; never type the string `"null"`.
 2. Guide manual Steps 13-14: the preferred commit-pinned Deploy to Azure button
    loads the private foundation into Azure Custom deployment. The fallback is
    Build your own template in the editor > Load file, using the same checkout's
    `deploy\azuredeploy.json`, then Save. Require the offline template/button
    checks to pass before either entry; the button does not load local edits.
    The user signs in, reviews the private subscription template/fields/costs
-   and selects Create. The button and fallback await new-customer UI validation;
-   do not treat local template checks as live UI evidence.
+   and selects Create. The pinned button and secure-entry route were exercised
+   in dogfood, including the required capacity-name field limitation.
+   Do not treat local template checks as live UI evidence or claim an old
+   immutable button contains unpublished template fixes.
 3. Wait for the user to report success and the subscription deployment record name.
    Read the actual deployment metadata/outputs. Verify success, version, identity,
    subscription, vault outputs and capacity choice through the existing helpers.
@@ -148,6 +173,15 @@ Stop for the Fabric finish approval after validation exits 0.
    If endpoint approval is pending, guide the exact Azure Key Vault connection
    approval in manual Step 18, then network-only resume. Require activation
    Succeeded and approval Approved; never modify unrelated endpoints.
+   Show the verified Pending Fabric connection identifier and workspace ID.
+   The portal can show an Approved Azure foundation `pe-...` row and a separate
+   Pending Fabric `<workspaceId>.mpe-...` row. The vault name identifies the
+   container, not the request. Have the user select only the matching Pending
+   row in Azure and confirm Approve. Never select all. If the identifier is
+   different or truncated, verify the actual connection metadata before action.
+   After user approval, verify read-only, separately approve `configure-network`,
+   then separately approve the remaining finish. Network resume alone does not
+   create the remaining Lakehouse/environment/notebook.
 4. Run `.\deploy.ps1 status`. Verify Configured stage, Runtime 1.3 and notebook
    bindings. Provide workspace/item names for the manual Step 19 UI inspection.
 5. Ask the user to inspect the created Fabric items; record that evidence separately.
@@ -167,6 +201,8 @@ Stop for the user's secret-entry handoff.
    `.\deploy.ps1 verify-secret` and require enabled/current ARM metadata.
    This is not runtime retrieval or GeoAnalytics authorization. For failure,
    use only redacted categories and nonsecret deployment/metadata checks.
+   Explicitly tell the user to report success in chat and approve metadata
+   verification there; do not leave a bare terminal command as the next action.
 4. If a key is exposed, do not repeat it. Stop and direct its owner to revoke/
    rotate it; do not promise to erase an exposure by deleting chat text.
 
@@ -182,6 +218,11 @@ Stop for synthetic compute approval; secret success is not authorization to run.
 3. Track the single execution and existing job, not duplicate submissions.
    Verify exit 0, preflight/simulation completion, requested run ID and six
    outputs. The script's receipt/read-back contract is authoritative.
+   If local polling fails, retain its nonzero exit as evidence. Read the
+   existing job without resubmitting. If it completed, propose
+   `.\deploy.ps1 recover-run -RunId <expected-run-id>` for separate approval.
+   Require validated persistence and status before Results publication; never
+   edit the manifest to bypass checks or call `run` as a recovery shortcut.
 4. Run status and read the existing nonsecret manifest's `lastResult`.
    Supply actual run/table names, counts and receipt path.
    Required origin, grid and daily-state outputs must be nonempty.
@@ -189,15 +230,34 @@ Stop for synthetic compute approval; secret success is not authorization to run.
 5. Guide manual Steps 23-24: Lakehouse/receipt, then separately approved
    `.\deploy.ps1 view-results` publication only. It submits no Spark job.
    Obtain separate interactive compute approval: Open Results > Run all > View map.
+   The user runs only Results once in Fabric; do not submit a second job.
+   Explain that workspace/item names remain unchanged for another city; the
+   embedded run ID identifies the current result. The map appears below the
+   cell; do not invent a required View map button if the UI renders inline.
    Never run the simulation notebook to obtain a map. Finally supply the
    six-table SQL count query with actual names and compare every receipt count.
    Do not claim map/SQL acceptance without observed results or user confirmation.
-6. Real-population execution is optional and was NOT RUN in dogfood acceptance.
+   Explain that SQL counts verify SQL access to Spark's existing output tables.
+   Supply actual names and expected counts; direct the user to New SQL query >
+   Run in the existing endpoint. No semantic model or view is required.
+6. Real-population execution is optional. The synthetic path is independently
+   complete after map and SQL acceptance. A bounded Tampa experiment also passed
+   after completed-job recovery; it is not a clean initial CLI success.
    Offer it only as a next experiment after synthetic/map/SQL verification. Display
    `real-run.json` with Atlanta coordinates, three days, 10 km, H3 6, real
    population and overwrite false. Confirm external-source readiness.
+   For another U.S. city, preserve the tracked example and prepare separate
+   reviewed inputs only after checking for already-submitted jobs. Confirm
+   source/network approval and capacity-owner test-window clearance. Distinguish
+   missing metrics from confirmed headroom; never infer either from Active state.
+   Explain that duration, CU consumption, and shared delayed billing differ.
+   Do not claim an attributable run cost from daily billing differences or
+   install monitoring/change capacity without approval.
 7. Obtain separate explicit approval for one real-population run, then execute
    `.\deploy.ps1 run -ParametersPath .\deploy\config\real-run.json`.
+   For an approved alternate-city scenario, substitute its reviewed local
+   parameters path in the proposed command and approval; do not run Atlanta
+   instead or submit both.
    Verify the new run separately. Do not scale to the upstream defaults,
    switch failed real inputs to synthetic, or claim a declined run completed.
 
@@ -207,6 +267,21 @@ Report verified stages, command/exit evidence, manual confirmations, current
 run IDs and table counts, blockers, and checks `NOT RUN`. Use the manual
 acceptance checklist. Distinguish local tests from live acceptance and
 script-verified Spark outputs from manually verified SQL/browser evidence.
+Declare completion after required synthetic acceptance and report optional
+tests separately. On requested closeout, save only a nonsecret private report
+outside Git. Explain how the user can stop completed Spark sessions they own
+and choose resource retention or separately approved cleanup. Closing chat does
+not cancel jobs or stop costs.
+
+No commit or push is required for a customer to complete Fast Pass. Inspect
+Git status if asked; customer configuration/state, downloaded/generated notebooks,
+and private evidence stay local. Separate scenario files may be untracked, not
+ignored: never blanket-stage them. For intentional contributor changes, show
+exact files and obtain separate permission for a feature-branch commit and
+publication. Never assume "commit, push" means publishing to main.
+End with "Fast Pass validation is complete. You can close this Copilot chat
+and VS Code, or keep them open for optional bounded testing, results exploration,
+or separately approved cleanup. Saved files and deployed resources remain."
 
 On resume, read the existing configuration/manifest and verify the original
 user/tenant first. A configured manifest does not mean a secret/run succeeded.

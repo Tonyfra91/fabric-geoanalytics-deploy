@@ -77,6 +77,9 @@ Use the verified Azure handoff. Do not run any notebook yet.
 ```
 
 Approve the corresponding terminal tool request only if its command matches.
+**Do this now: reply in Chat to approve; Copilot will execute in the terminal.**
+Do not paste the command into Chat as a shell command or run it a second time
+yourself. Stop if the target or command differs.
 Copilot waits for publication/import, checks exit code, and runs status.
 Expect the configured success message, `"stage": "Configured"`,
 `"runtimeVersion": "1.3"`, and `"notebookBindingsVerified": true`.
@@ -88,6 +91,31 @@ Lakehouse, Environment and Notebook using
 Do not select **Run all**, manually import the original, or insert a key.
 Tell Copilot whether you can see those items. This confirms the browser check
 as well as the command results.
+
+### Pending connection: approve the exact Azure row
+
+If finish stops Pending, use the
+[exact-row handoff](./manual.md#if-endpoint-approval-is-pending).
+Copilot must supply the verified workspace GUID and managed endpoint name,
+derive the candidate portal identifier `<workspace-guid>.mpe-<vault-name>`,
+and confirm it against the actual ARM connection/private-endpoint identifier.
+It must show the already Approved foundation `pe-<vault-name>` separately.
+These are two connection rows inside the same vault, not two vaults.
+Stop if the generated Azure identifier differs until its identity is verified;
+do not assume every service response follows the candidate naming form.
+
+**Do this now in Azure portal:** select only that verified **Pending Fabric**
+row, check this vault and `vault` subresource, choose **Approve** and confirm
+the dialog. Do not select-all or select the Approved foundation row.
+This Azure approval is separate from Chat/tool approval.
+
+**Return to Chat:** “I approved the verified Pending Fabric connection in Azure.
+Show the network-only resume command; do not finish items or run compute yet.”
+Separately approve `configure-network` in Chat and its matching terminal tool.
+Expected: **Succeeded / Approved**. Stop otherwise.
+Then separately approve the original `deploy -AzureDeploymentName` finish
+command if items remain unfinished. Network-only resume does not create the
+Lakehouse/environment/notebook or establish runtime secret access.
 
 ## FP12 Enter the Esri key yourself outside Copilot tools
 
@@ -108,6 +136,11 @@ This command prints only nonsecret instructions and never prompts for a key:
 .\deploy.ps1 configure-secret
 ```
 
+**Do this now in Chat:** “Approve configure-secret instructions only. Execute
+the displayed command in the terminal; do not inspect my credential-entry session.”
+Approve the matching tool request once. Expect the nonsecret target/template path.
+The foundation did not enter the key; this is manual Step 20.
+
 Follow [manual Step 20](./manual.md#step-20-securely-provide-the-esri-api-key):
 load the nonsecret template, select the existing subscription/resource group
 and vault, then enter the key only in the masked `geoAnalyticsApiKey` field.
@@ -117,6 +150,13 @@ resources other than the one secret. Never put the key into the template editor,
 chat, parameters files, configuration, or notebook code.
 
 After you report **Deployment succeeded**, Copilot can run:
+
+**Do this now in Chat:**
+
+```text
+The secure secret deployment succeeded. Approve verify-secret in the terminal
+for ARM metadata only. Do not retrieve the key or execute Spark.
+```
 
 ```powershell
 .\deploy.ps1 verify-secret
@@ -129,6 +169,7 @@ Secret metadata verified; runtime access is checked during run.
 ```
 
 This checks enabled/current metadata through ARM without retrieving the value.
+Do not run verification a second time manually. Stop on missing/invalid metadata.
 Next is the synthetic-run approval checkpoint, not automatic execution.
 For failure, provide only a redacted category and deployment status.
 Copilot must never request `az keyvault secret show`, raw secret GETs, clipboard

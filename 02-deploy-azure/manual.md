@@ -49,6 +49,8 @@ With either entry, sign in with the same Step 03 account, then:
    subscription does not match your note. This is a **subscription-scoped**
    deployment; the template creates its own dedicated resource group, not a
    shared group.
+   The dropdown usually shows the subscription **name**. Verify its ID at
+   **Subscriptions > selected subscription > Overview** before submission.
 2. Fill the template fields using the table below. Azure may display camelCase
    names with spaces, such as “Deployment Name”.
 3. If Azure displays a separate deployment metadata **Region/Location** field,
@@ -65,18 +67,23 @@ With either entry, sign in with the same Step 03 account, then:
 | `keyVaultName`           | Available globally unique vault name from Step 05                            |
 | `userObjectId`           | The GUID from Step 03 `az ad signed-in-user show`                            |
 | `shouldCreateCapacity`   | `false`                                                                      |
-| `capacityName`           | Leave the optional value null/unset; do not type an existing capacity's name |
+| `capacityName`           | Nullable in ARM, but portal may require input: if blank is rejected while `shouldCreateCapacity=false`, enter `unusedcapacity`. Ignored only with false; not an existing capacity's name |
 | `capacitySku`            | Leave default `F2`; ignored when `shouldCreateCapacity=false`                |
 | `capacityAdministrators` | Leave the empty JSON array `[]`; do not enter the Esri key here              |
-| `virtualNetworkName` | Keep derived `vnet-<deploymentName>` or use a dedicated name that meets your organization's naming rules |
+| `virtualNetworkName` | Enter reviewed literal `vnet-<your-ownership-name>`, not a displayed ARM `format(...)` expression |
 | `virtualNetworkAddressPrefix` | Approved nonoverlapping IPv4 range; default `10.0.0.0/16` |
 | `privateEndpointSubnetName` | Dedicated subnet; default `snet-private-endpoints` |
 | `privateEndpointSubnetPrefix` | Subnet within that range; default `10.0.0.0/24` |
-| `privateEndpointName` | Keep derived `pe-<keyVaultName>` |
-| `privateEndpointNetworkInterfaceName` | Keep derived `nic-<privateEndpointName>` |
-| `privateDnsLinkName` | Keep derived `<virtualNetworkName>-vault` |
+| `privateEndpointName` | Enter reviewed literal `pe-<your-vault-name>` |
+| `privateEndpointNetworkInterfaceName` | Enter reviewed literal `nic-<your-private-endpoint-name>` |
+| `privateDnsLinkName` | Enter reviewed literal `<your-vnet-name>-vault` |
 
 Do not manually type the literal string `"null"` for a nullable value.
+The pinned template and Load file have the same private design; neither promises
+a corrected required-field UI. `unusedcapacity` is the tested existing-capacity
+workaround, not permission to create capacity. Keep `shouldCreateCapacity=false`.
+Replace network expression defaults and default CIDRs with reviewed literal
+names and owner-approved ranges before **Create**.
 Do not enter your email, application/client ID, or subscription ID in `userObjectId`.
 
 For an administrator-approved **new capacity**, set `shouldCreateCapacity=true`,
@@ -96,8 +103,9 @@ No Esri key is created or accepted, and no notebook is executed.
 > [!NOTE]
 > Key Vault public access stays **Disabled**. The Azure private endpoint does not
 > connect your computer or Fabric automatically; Stage 3 establishes the Fabric
-> managed endpoint. The new button and Load file fallback have offline checks
-> but still need new-customer portal validation. Stop if the form is not
+> managed endpoint. Existing-capacity portal dogfood succeeded with the
+> `unusedcapacity` workaround; broader new-customer/Load file UI behavior remains
+> unvalidated. Stop if the form is not
 > subscription-scoped. Never redeploy an existing validated foundation just to
 > change the entry UI.
 
@@ -143,6 +151,8 @@ before initialization. Resources may remain after partial failure.
 
 At this point, **Fabric is not deployed yet**. Do not manually import the
 original notebook or create a Lakehouse.
+No Esri key was entered in the foundation; secure entry is later at
+[Step 20](../03-finish-fabric/manual.md#step-20-securely-provide-the-esri-api-key).
 
 Next: [Step 15](../03-finish-fabric/manual.md#step-15-generate-the-nonsecret-local-configuration).
 Return to local PowerShell, not a Fabric notebook or Azure Cloud Shell.

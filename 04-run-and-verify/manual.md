@@ -89,6 +89,11 @@ follow [recovery instructions](../deploy/README.md#recover-an-interrupted-run).
 Separately approve `.\deploy.ps1 recover-run -RunId '<expected-run-id>'` to validate
 and save the existing job's outputs without resubmitting compute. It cannot recover
 a failed or incomplete job and does not republish Results.
+Keep four facts separate: the cloud job's outcome, the original CLI exit,
+persisted `lastResult`, and the Results notebook's saved run binding. Recovery
+does not turn an interrupted CLI exit 1 into a clean first-pass run.
+Do not edit state or bypass provisioning milestones. After exit `0`, inspect
+status/manifest and separately republish Results for that recovered ID.
 
 Next: [Step 23](#step-23-open-the-six-tables-and-onelake-receipt) only after
 normal execution or approved recovery exits `0`, not merely a green browser job.
@@ -166,6 +171,9 @@ submits **no Spark job**. Repeating publication can replace custom viewer edits.
 Historical active preview jobs must finish before the viewer is changed.
 
 Expect exit `0`, the verified run ID and Results notebook URL.
+Compare that ID with `lastResult.run_id`. Workspace, Lakehouse, environment,
+Demo and Results item names stay the same; new run IDs select new table sets.
+An unchanged Results notebook still reads its saved older run until republished.
 The viewer accepts at most 5,000 grid and arrival rows each; it fails explicitly
 instead of truncating larger outputs. Its geometry reader supports the demo's
 2D POINT and single-ring POLYGON output, not arbitrary WKT.
@@ -191,7 +199,9 @@ A completed background job does not prove visible output.
 3. Select **New SQL query**. Replace `<run_id_lowercase>` everywhere below
    with your run ID in lowercase. If your prefix/schema differs, use the
    exact table names/schema from the receipt/explorer instead.
-4. Select **Run**. Compare every count with `result.json`.
+4. **Do this now:** click the green **Run** above the query. Compare every count
+   with `result.json`. This read-only query verifies that SQL consumers can see
+   the same six outputs Spark produced. No view or semantic model needs creating.
 
 ```sql
 SELECT 'cells_daily' AS output_name, COUNT_BIG(*) AS row_count
@@ -235,7 +245,7 @@ to finish with real-population validation marked `NOT RUN`.
 Where to be: local PowerShell for submission, then Fabric to verify the new outputs.
 
 This step exercises the upstream demo's external census/SVI enrichment.
-It was **NOT RUN** during end-to-end validation. Skip it to finish the validated
+The supplied Atlanta scenario was **NOT RUN** during recorded dogfood. Skip it to finish the validated
 synthetic Fast Pass; it is a separately approved next experiment.
 It requires the Step 12 public-source network approvals. It is not required
 to prove that the synthetic setup worked.
@@ -268,6 +278,31 @@ the same model with bounded inputs, not a claim of identical output extent,
 row counts, map rendering or runtime.
 See [architecture and next experiments](../05-next-steps/README.md).
 
+#### Optional Tampa reference, not universal expected counts
+
+A separate Runtime **1.3/F2** test used `OUTBREAK_LAT=27.9506`,
+`OUTBREAK_LON=-82.4572`, three days, 10 km, H3 6, seed 42,
+`USE_REAL_POPULATION=true`, `OVERWRITE=false`. Its counts were:
+
+| Output | Tampa reference count |
+| ------ | --------------------- |
+| `cells_daily` | 8 |
+| `arrival` | 3 |
+| `front_daily` | 4 |
+| `grid_population_vulnerability` | 17 |
+| `origin` | 1 |
+| `vulnerability_summary` | 5 |
+
+The original CLI exited **1** after a DNS interruption. Already submitted
+preflight/simulation jobs completed; `recover-run` exited **0** and persisted
+the verified result without resubmission. Results was then republished, and
+the user confirmed its visible map and matching SQL counts. This is recovered
+acceptance, not uninterrupted initial CLI success. Your receipt remains
+authoritative; other inputs/runtime/partitioning can differ.
+Per-run CU/cost, Runtime 2.0, Ana execution and production suitability were
+not validated. For another US city use a
+[separate untracked nonsecret input](../05-next-steps/README.md#test-another-scenario).
+
 Next: repeat [Steps 22-24](#step-22-watch-the-two-jobs-in-fabric) for this new run,
 then complete the [acceptance checklist](#acceptance-checklist).
 
@@ -284,7 +319,8 @@ Before finishing, check each result below:
 * [ ] Status shows runtime `1.3` and the notebook connected to the expected items.
 * [ ] Key Vault public access is Disabled; endpoint activation/approval is Succeeded / Approved.
 * [ ] Secret is stored without exposing its value.
-* [ ] The access check and sample-data run succeed, and `run` exits `0`.
+* [ ] The access check and sample-data run succeed; `run` exits `0`, or supported
+  recovery exits `0` with the original local failure retained in evidence.
 * [ ] Six output tables and `result.json` are readable with required nonempty outputs.
 * [ ] SQL table previews and row counts match the run summary.
 * [ ] Open Results > Run all displays this run's map in Fabric.
@@ -296,6 +332,9 @@ Leave any unfinished check unchecked.
 
 **Fast Pass completed successfully** when the mandatory checks above are met.
 Real-population validation may remain **NOT RUN**.
+No commit/push is required. Contributor feature branches, source-only staging,
+commits, pushes and PRs require explicit permission; never blanket-stage local
+configuration/state, private evidence or upstream/generated notebooks.
 
 To view completed results, open Fabric rather than repeating setup.
 Repeating Fabric setup republishes the environment and updates the generated
@@ -313,6 +352,10 @@ It is not a follow-up to a successful deployment.
 
 Automatic `remove` is intentionally unavailable. Do not expect resource cleanup
 to happen when you close the browser, stop a terminal, or delete a local clone.
+**Do this now in Fabric:** stop the interactive Results Spark session when
+finished. Check submitted jobs independently; stopping Chat does not cancel them.
+Resources/capacity can keep charging. Job elapsed time, CU consumption and
+shared/delayed billing are distinct; a daily cost delta is not per-run cost.
 
 1. Record the deployed ownership name, group and item names from configuration/manifest.
 2. Ask the resource owners to review the deployment tags/descriptions and confirm

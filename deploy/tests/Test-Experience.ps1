@@ -68,6 +68,15 @@ if ($MyInvocation.InvocationName -ne '.') {
             $Config = New-PortalCustomerConfig -AzureDeploymentName 'portal-record' -ExistingCapacityId $script:CapacityId
             Assert-Check 'Existing capacity GUID retained' ($Config.capacity.id -eq $script:CapacityId)
             Assert-Check 'Portal parameters mapped, record name not confused with ownership name' ($Config.deploymentName -eq 'geo-demo')
+            $script:Azure.properties.parameters.capacityName.value = 'unusedcapacity'
+            $PlaceholderConfig = New-PortalCustomerConfig -AzureDeploymentName 'portal-record' -ExistingCapacityId $script:CapacityId
+            Assert-Check 'Portal-required capacity name cannot select or create capacity in existing-capacity mode' (
+                $PlaceholderConfig.capacity.mode -eq 'existing' -and
+                $PlaceholderConfig.capacity.id -eq $script:CapacityId -and
+                $PlaceholderConfig.capacity.name -eq $Config.capacity.name)
+            $null = Get-VerifiedAzureDeployment -Config $PlaceholderConfig -DeploymentName 'portal-record'
+            Assert-Check 'Existing-capacity handoff accepts the ignored portal placeholder' $true
+            $script:Azure.properties.parameters.capacityName.value = $null
             Assert-Check 'All five confirmations remain false' (@($Config.confirmations.Values | Where-Object { $_ -eq $false }).Count -eq 5)
             Assert-Check 'Names are generated safely' ($Config.lakehouseName -eq 'Geo_geo_demo')
             $ConfigPath = Join-Path ([IO.Path]::GetTempPath()) "geo-config-$([guid]::NewGuid().ToString('N')).json"

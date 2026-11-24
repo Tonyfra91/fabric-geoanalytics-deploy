@@ -26,6 +26,10 @@ Continue the route you selected:
 Review the settings file and confirm the five permissions and licensing
 approvals. Once the checks pass, approve Fabric setup.
 Approve the exact Key Vault managed endpoint in Azure if requested, then resume.
+The Pending Fabric row is separate from the Approved Azure foundation row:
+use the [exact-row instructions](./manual.md#if-endpoint-approval-is-pending).
+Return to Chat for separate network-only resume approval, then separate remaining
+finish approval. Copilot executes approved commands in the terminal; do not duplicate them.
 Use the separate secure ARM credential step. Keep the key out of Chat,
 configuration, generated parameters, state, notebooks and logs.
 

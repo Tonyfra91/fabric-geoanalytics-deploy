@@ -23,9 +23,14 @@ Continue the route you selected:
 
 Start with the small synthetic run, which uses generated sample population
 data. This is end-to-end functional validation, not a benchmark. Optional
-real-population execution was **NOT RUN** and is not required to finish.
+real-population execution is not required to finish; record it as **NOT RUN**
+if you skip it. A separate Tampa reference passed after completed-job recovery,
+not a clean initial CLI run; its evidence does not validate arbitrary scenarios.
 If a command times out or the browser looks idle, check the existing job
 before starting another one; it may still be running.
+For completed cloud jobs with failed local polling, separately approve
+[recover-run](../deploy/README.md#recover-an-interrupted-run). Require recovered
+state and the new viewer binding before map/SQL acceptance; do not resubmit compute.
 
 ### See
 
@@ -47,5 +52,8 @@ After checking your results, you can stop or open
 When you no longer need the resources, follow the
 [cleanup guide](./manual.md#cleanup-and-troubleshooting).
 Deletion needs the resource owner's approval.
+**Do this now in Fabric:** stop the interactive Results Spark session after
+acceptance. Expected: the session is stopped; check any submitted jobs separately.
+Resources can still charge. No commit/push is required.
 
 [Previous: 03 Finish Fabric](../03-finish-fabric/README.md)

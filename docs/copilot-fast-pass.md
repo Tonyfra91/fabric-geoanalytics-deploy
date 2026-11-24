@@ -10,6 +10,14 @@ New here? Start with [01 Start here](../01-start-here/README.md).
 Otherwise, open [Copilot Fast Pass](../01-start-here/copilot.md)
 or choose your step below.
 
+Folder numbers **01-05** are journey chapters; **FP01-FP16** are Chat
+checkpoints. Manual **Steps 01-25** are the alternative route, not extra work.
+**Do this now:** open your current checkpoint. Expected: a named place/action
+and success condition. Stop if it is unresolved. For approved commands reply in
+Chat; Copilot executes once through the terminal, not a duplicate manual run.
+For an existing deployment, use [read-only resume](../04-run-and-verify/copilot.md#fp16-finish-with-evidence-or-resume-safely),
+not a fresh deployment.
+
 ## Use Copilot as your deployment guide
 
 Continue at [this section in the numbered journey](../01-start-here/copilot.md#use-copilot-as-your-deployment-guide).
